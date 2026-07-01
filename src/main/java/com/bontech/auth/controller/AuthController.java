@@ -26,6 +26,11 @@ public class AuthController {
         return authService.loginStepOne(request);
     }
 
+    @PostMapping("/login/otp")
+    public AuthDto.LoginStartResponse loginWithOtp(@Valid @RequestBody AuthDto.OtpLoginStartRequest request) {
+        return authService.loginWithOtp(request);
+    }
+
     @PostMapping("/login/select-phone")
     public AuthDto.SelectPhoneResponse selectPhone(@Valid @RequestBody AuthDto.SelectPhoneRequest request) {
         return authService.selectPhone(request);

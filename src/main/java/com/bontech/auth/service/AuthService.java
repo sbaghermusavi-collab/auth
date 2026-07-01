@@ -69,6 +69,24 @@ public class AuthService {
         );
     }
 
+    public AuthDto.LoginStartResponse loginWithOtp(AuthDto.OtpLoginStartRequest request) {
+        UserPhoneNumber phone = phoneRepository.findByPhoneNumber(request.phoneNumber())
+                .orElseThrow(() -> new IllegalArgumentException("Phone not found"));
+        UserAccount user = phone.getUser();
+
+        createAndSendChallenge(user, phone);
+        logService.log(user, "LOGIN_OTP", "OTP requested via phone number");
+
+        boolean passwordChangeRequired = user.isPasswordChangeRequired() || user.getPasswordExpiresAt().isBefore(Instant.now());
+
+        return new AuthDto.LoginStartResponse(
+                "OTP_SENT",
+                "Two-step code sent",
+                List.of(new AuthDto.MaskedPhone(mask(phone.getPhoneNumber()), phone.getNationalCode())),
+                passwordChangeRequired
+        );
+    }
+
     public AuthDto.SelectPhoneResponse selectPhone(AuthDto.SelectPhoneRequest request) {
         UserAccount user = userAccountRepository.findByUsername(request.username())
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));

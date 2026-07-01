@@ -1,294 +1,495 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <title>Two-Step Login</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+<!doctype html>
+<html lang="fa" dir="rtl" data-auth-tone="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>آسانک — ورود، ثبت‌نام</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Source+Code+Pro:wght@400;600&display=swap');
-        :root {
-            --bg: #0b0f1a;
-            --card: #12182b;
-            --text: #e6e9f2;
-            --muted: #a7b0c4;
-            --accent: #f6b73c;
-            --accent-2: #5fd1b6;
-            --stroke: #232a3f;
-        }
-        * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            font-family: "Space Grotesk", system-ui, sans-serif;
-            color: var(--text);
-            background:
-                radial-gradient(1200px 600px at 15% -10%, #24305c 0%, rgba(36,48,92,0) 60%),
-                radial-gradient(900px 500px at 90% 10%, #1b3b4d 0%, rgba(27,59,77,0) 55%),
-                var(--bg);
-        }
-        a { color: inherit; text-decoration: none; }
-        .wrap { max-width: 1100px; margin: 0 auto; padding: 32px 20px 64px; }
-        .nav { display: flex; align-items: center; justify-content: space-between; }
-        .badge {
-            background: linear-gradient(135deg, var(--accent), #f9d976);
-            color: #171717;
-            padding: 6px 10px;
-            border-radius: 999px;
-            font-size: 12px;
-            font-weight: 700;
-        }
-        .hero { margin-top: 26px; display: grid; gap: 18px; }
-        .hero h1 { margin: 0; font-size: 36px; }
-        .hero p { margin: 0; color: var(--muted); }
-        .grid {
-            margin-top: 26px;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 18px;
-        }
-        .card {
-            background: var(--card);
-            border: 1px solid var(--stroke);
-            border-radius: 16px;
-            padding: 18px;
-        }
-        .step {
-            display: grid;
-            grid-template-columns: 36px 1fr;
-            gap: 12px;
-            align-items: start;
-            margin-bottom: 14px;
-        }
-        .step-num {
-            width: 32px;
-            height: 32px;
-            border-radius: 10px;
-            background: var(--accent-2);
-            color: #0b1c18;
-            display: grid;
-            place-items: center;
-            font-weight: 700;
-        }
-        label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px; }
-        input {
-            width: 100%;
-            padding: 10px 12px;
-            border-radius: 10px;
-            border: 1px solid var(--stroke);
-            background: #0f1424;
-            color: var(--text);
-            font-family: inherit;
-        }
-        button {
-            margin-top: 12px;
-            padding: 10px 14px;
-            border-radius: 10px;
-            border: none;
-            font-weight: 600;
-            cursor: pointer;
-            background: linear-gradient(135deg, var(--accent), #f9d976);
-            color: #1d1d1d;
-        }
-        pre {
-            margin: 12px 0 0;
-            padding: 12px;
-            background: #0f1424;
-            border-radius: 12px;
-            border: 1px solid var(--stroke);
-            color: #cfe2ff;
-            font-family: "Source Code Pro", ui-monospace, SFMono-Regular, Menlo, monospace;
-            font-size: 12px;
-            white-space: pre-wrap;
-        }
-        .links { display: flex; gap: 14px; color: var(--muted); font-weight: 500; }
+      /* Inject basic styles to make it render somewhat correctly without styles.css if not present */
+      body { font-family: Tahoma, Arial, sans-serif; background: #111; color: #fff; margin: 0; padding: 0; direction: rtl; }
+      .auth-root { display: flex; min-height: 100vh; }
+      .form-shell { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+      .auth-dark { flex: 1; background: #000; display: none; }
+      @media (min-width: 768px) { .auth-dark { display: flex; flex-direction: column; justify-content: space-between; padding: 40px; } }
+      .form-card { background: #222; padding: 30px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+      .fld { margin-bottom: 15px; }
+      .fld-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+      .fld-input, .otp-cell { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #333; color: #fff; }
+      .otp-inputs { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; }
+      .otp-cell { width: 40px; text-align: center; font-size: 20px; }
+      .btn { width: 100%; padding: 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; margin-bottom: 10px; }
+      .btn-primary { background: #007bff; color: #fff; }
+      .btn-outline { background: transparent; border: 1px solid #007bff; color: #007bff; }
+      .link { color: #007bff; text-decoration: none; }
+      .center { text-align: center; }
+      .error-msg { color: #ff4d4d; font-size: 12px; display: none; margin-top: 5px; }
+      /* Add some global css from the original jsp if needed */
     </style>
-</head>
-<body>
-<div class="wrap">
-    <div class="nav">
-        <div class="badge">Two-Step Login</div>
-        <div class="links">
-            <a href="/">Home</a>
-            <a href="/register">Register</a>
+    <!-- Assuming styles.css is available in the web root -->
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="auth-root">
+      <div class="form-shell">
+        <div class="brand-logo" style="margin-bottom: 20px; text-align: center;">
+          <span class="mark">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 5h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H10l-4 3v-3H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />
+              <path d="M8 9.5h8M8 12.5h5" />
+            </svg>
+          </span>
+          <span class="name" style="font-size: 24px; font-weight: bold; margin-right: 10px;">آسانک</span>
         </div>
+
+        <div class="form-center">
+            <div id="panel-login"><div class="form-card fade-up" id="form-card">
+            <div style="margin-bottom: 24px">
+              <h1 class="scr-title center">ورود به حساب</h1>
+              <p
+                class="muted"
+                style="margin-top: 9px; font-size: 14.5px; text-align: center"
+              >
+                حساب کاربری ندارید؟
+
+
+                <a class="link" href="signup.html">
+  ثبت&zwnj;نام کنید
+</a>
+
+              </p>
+            </div>
+            <div class="fld">
+              <div class="fld-row">
+                <label class="field-label">نام کاربری یا موبایل</label>
+              </div>
+              <div class="fld-wrap">
+                <input
+                  class="fld-input tnum"
+                  id="f-identifier"
+                  placeholder="نام کاربری یا ۰۹۱۲…"
+                  autocomplete="off"
+                /><span class="lead"
+                  ><svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.9"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    style="flex-shrink: 0"
+                  >
+                    <circle cx="12" cy="8" r="4"></circle>
+                    <path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"></path></svg
+                ></span>
+              </div>
+            </div>
+            <div class="fld">
+              <div class="fld-row">
+                <label class="field-label">رمز عبور</label
+                ><button type="button" class="fld-link">
+                  فراموشی رمز عبور؟
+                </button>
+              </div>
+              <div class="fld-wrap">
+                <input
+                  class="fld-input"
+                  id="f-pw"
+                  type="password"
+                  placeholder="رمز عبور خود را وارد کنید"
+                /><span class="lead"
+                  ><svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.9"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    style="flex-shrink: 0"
+                  >
+                    <rect x="4" y="10" width="16" height="11" rx="2"></rect>
+                    <path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg></span
+                ><button
+                  type="button"
+                  class="fld-toggle"
+                  data-act="pw-toggle"
+                  aria-label="نمایش رمز"
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.9"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    style="flex-shrink: 0"
+                  >
+                    <path
+                      d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"
+                    ></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <label class="chk on" data-act="remember" style="margin-top: 2px"
+              ><span class="box"
+                ><svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  style="flex-shrink: 0"
+                >
+                  <path d="M20 6 9 17l-5-5"></path></svg></span
+              >مرا به خاطر بسپار</label
+            >
+            <div class="fld">
+              <label class="field-label">کد امنیتی</label>
+              <div class="captcha-row">
+                <div class="fld-wrap" dir="ltr" id="cap-wrap" style="flex: 1">
+                  <input
+                    class="fld-input tnum"
+                    id="f-captcha"
+                    placeholder="کد تصویر"
+                    maxlength="5"
+                    autocomplete="off"
+                    style="text-transform: uppercase; letter-spacing: 0.18em"
+                  /><span class="lead"
+                    ><svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.9"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      style="flex-shrink: 0"
+                    >
+                      <path
+                        d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z"
+                      ></path>
+                      <path d="M9 12l2 2 4-4"></path></svg
+                  ></span>
+                </div>
+                <div class="captcha-box">
+                  <canvas id="cap-canvas" width="187" height="65"></canvas
+                  ><button
+                    type="button"
+                    class="captcha-refresh"
+                    data-act="cap-refresh"
+                    title="کد جدید"
+                    aria-label="کد جدید"
+                  >
+                    <svg
+                      width="17"
+                      height="17"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.9"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      style="flex-shrink: 0"
+                    >
+                      <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+                      <path d="M21 3v5h-5"></path>
+                      <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+                      <path d="M3 21v-5h5"></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <p class="fld-hint error" id="cap-error" style="display: none">
+                کد امنیتی نادرست است.
+              </p>
+            </div>
+            <button
+              class="btn btn-primary btn-block"
+              id="primary"
+              style="height: 48px; margin-top: 22px"
+              disabled=""
+            >
+              ورود به حساب<svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.9"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                style="flex-shrink: 0"
+              >
+                <path d="M19 12H5"></path>
+                <path d="m12 19-7-7 7-7"></path>
+              </svg>
+            </button>
+            <div class="or-div">یا</div>
+            <button
+              class="btn btn-outline btn-block"
+              id="otp-login"
+              style="height: 46px"
+            >
+              <svg
+                width="17"
+                height="17"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.9"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                style="flex-shrink: 0"
+              >
+                <path
+                  d="M5 4h4l2 5-3 2a12 12 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"
+                ></path></svg
+              >ورود با کد یک&zwnj;بارمصرف
+            </button>
+            <p class="note" style="margin-top: 22px; line-height: 2">
+              با ورود،
+              <a class="link" style="font-weight: 600">قوانین و مقررات</a> و
+              <a class="link" style="font-weight: 600">حریم خصوصی</a> را
+              می&zwnj;پذیرید.
+            </p>
+          </div></div>
+<div id="panel-method" style="display:none"><div class="form-card">
+        <a href="login.html" class="btn btn-ghost btn-sm">← تغییر شماره</a>
+        <h1 class="scr-title">روش دریافت کد را انتخاب کنید</h1>
+        <p class="scr-sub">کد به شماره <span id="phone-display" class="bold-ink"></span> ارسال خواهد شد.</p>
+
+        <form action="otp.html" method="get" id="method-form">
+          <input type="hidden" name="phone" id="phone-hidden">
+          <input type="hidden" name="delivery" id="delivery-input" value="sms">
+
+          <div class="method-list">
+            <button type="button" class="method active" data-delivery="sms">پیامک</button>
+            <button type="button" class="method" data-delivery="voice">تماس صوتی</button>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block">ارسال کد →</button>
+        </form>
+      </div></div>
+<div id="panel-otp" style="display:none"><div class="form-card">
+        <a href="login.html" class="btn btn-ghost btn-sm">← تغییر شماره</a>
+        <h1 class="scr-title">کد تأیید را وارد کنید</h1>
+        <p class="scr-sub">کد به شماره <strong id="phone-show"></strong> ارسال شد.</p>
+
+        <form action="success.html" method="get">
+          <input type="hidden" name="phone" id="phone-hidden">
+          <div class="otp-inputs" dir="ltr">
+            <input class="otp-cell" maxlength="1" name="c1" required>
+            <input class="otp-cell" maxlength="1" name="c2" required>
+            <input class="otp-cell" maxlength="1" name="c3" required>
+            <input class="otp-cell" maxlength="1" name="c4" required>
+            <input class="otp-cell" maxlength="1" name="c5" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">تأیید و ورود</button>
+        </form>
+      </div></div>
+<div id="panel-success" style="display:none"><div class="form-card" style="text-align:center">
+        <div class="success-ico">✓</div>
+        <h1 class="scr-title center">با موفقیت وارد شدید</h1>
+        <p class="scr-sub">به پنل آسانک خوش آمدید.</p>
+        <a href="login.html" class="btn btn-outline">بازگشت به صفحه ورود</a>
+      </div></div>
+        </div>
+      </div>
+
+      <!-- پنل برند (کامل) -->
+      <aside class="auth-dark">
+        <!-- Original brand panel content -->
+        <div class="auth-top">
+          <h2>هر مشتری را<br /><b>بهتر بشناسید</b></h2>
+          <p>پیامک، تماس صوتی و تحلیل رفتار مشتری — همه در یک پلتفرم یکپارچه و زنده.</p>
+        </div>
+      </aside>
     </div>
 
-    <div class="hero">
-        <h1>Three-Step Login Flow</h1>
-        <p>Step 1 validates username, password, and captcha. If multiple phones exist, choose national code to send OTP. Then verify OTP.</p>
-    </div>
+    <script>
+      let currentUsername = "";
+      let currentPhone = "";
 
-    <div class="grid">
-        <div class="card">
-            <div class="step">
-                <div class="step-num">1</div>
-                <div>
-                    <strong>Validate Credentials</strong>
-                    <p>POST /api/auth/login</p>
-                </div>
-            </div>
-            <form id="stepOneForm">
-                <label for="tenantId">Tenant ID</label>
-                <input id="tenantId" name="tenantId" placeholder="1" required />
-                <label for="username">Username</label>
-                <input id="username" name="username" placeholder="demo.user" required />
-                <label for="password">Password</label>
-                <input id="password" name="password" type="password" placeholder="Password123" required />
-                <label for="captchaToken">Captcha Token</label>
-                <input id="captchaToken" name="captchaToken" placeholder="demo-captcha" required />
-                <button type="submit">Send Step 1</button>
-            </form>
-            <pre id="stepOneResult">Waiting for step 1...</pre>
-        </div>
+      const panelLogin = document.getElementById('panel-login');
+      const panelMethod = document.getElementById('panel-method');
+      const panelOtp = document.getElementById('panel-otp');
+      const panelSuccess = document.getElementById('panel-success');
 
-        <div class="card">
-            <div class="step">
-                <div class="step-num">2</div>
-                <div>
-                    <strong>Select National Code</strong>
-                    <p>POST /api/auth/login/select-phone</p>
-                </div>
-            </div>
-            <form id="selectPhoneForm">
-                <label for="nationalCode">National Code</label>
-                <input id="nationalCode" name="nationalCode" placeholder="US" list="nationalCodeOptions" />
-                <datalist id="nationalCodeOptions"></datalist>
-                <button type="submit">Send OTP</button>
-            </form>
-            <pre id="selectPhoneResult">Waiting for step 2...</pre>
-        </div>
+      const btnPrimaryLogin = document.getElementById('primary');
+      const btnOtpLogin = document.getElementById('otp-login');
+      const loginError = document.createElement('div');
+      loginError.className = 'error-msg';
+      panelLogin.querySelector('.form-card').appendChild(loginError);
 
-        <div class="card">
-            <div class="step">
-                <div class="step-num">3</div>
-                <div>
-                    <strong>Verify OTP</strong>
-                    <p>POST /api/auth/verify-2fa</p>
-                </div>
-            </div>
-            <form id="stepTwoForm">
-                <label for="code">OTP Code</label>
-                <input id="code" name="code" placeholder="123456" required />
-                <button type="submit">Verify</button>
-            </form>
-            <pre id="stepTwoResult">Waiting for step 3...</pre>
-        </div>
+      // Disable button initially but we remove disabled for this simple integration
+      if(btnPrimaryLogin) btnPrimaryLogin.disabled = false;
 
-        <div class="card">
-            <div class="step">
-                <div class="step-num">i</div>
-                <div>
-                    <strong>Service Config</strong>
-                    <p>Captcha + SMS endpoints from config.</p>
-                </div>
-            </div>
-            <label>Captcha URL</label>
-            <input value="${captchaUrl}" readonly />
-            <label>Captcha Validate URL</label>
-            <input value="${captchaValidateUrl}" readonly />
-            <label>SMS Sender API</label>
-            <input value="${smsSenderApiUrl}" readonly />
-        </div>
-    </div>
-</div>
+      // Handle Password Login
+      if(btnPrimaryLogin) {
+          btnPrimaryLogin.addEventListener('click', async (e) => {
+              e.preventDefault();
+              const identifier = document.getElementById('f-identifier').value;
+              const password = document.getElementById('f-pw').value;
+              const captcha = document.getElementById('f-captcha').value;
 
-<script>
-    const stepOneForm = document.getElementById("stepOneForm");
-    const selectPhoneForm = document.getElementById("selectPhoneForm");
-    const stepTwoForm = document.getElementById("stepTwoForm");
-    const stepOneResult = document.getElementById("stepOneResult");
-    const selectPhoneResult = document.getElementById("selectPhoneResult");
-    const stepTwoResult = document.getElementById("stepTwoResult");
-    const nationalCodeInput = document.getElementById("nationalCode");
-    const nationalCodeOptions = document.getElementById("nationalCodeOptions");
-    let currentUsername = "";
-    let currentTenantId = "";
+              if(!identifier || !password || !captcha) {
+                  loginError.textContent = "لطفاً همه فیلدها را پر کنید.";
+                  loginError.style.display = 'block';
+                  return;
+              }
 
-    stepOneForm.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        stepOneResult.textContent = "Sending...";
-        stepTwoResult.textContent = "Waiting for step 3...";
-        selectPhoneResult.textContent = "Waiting for step 2...";
-        currentUsername = document.getElementById("username").value;
-        currentTenantId = document.getElementById("tenantId").value;
-        const payload = {
-            username: currentUsername,
-            password: document.getElementById("password").value,
-            captchaToken: document.getElementById("captchaToken").value
-        };
-        try {
-            const res = await fetch("/api/auth/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "X-Actor-Tenant-Id": currentTenantId },
-                body: JSON.stringify(payload)
-            });
-            const text = await res.text();
-            stepOneResult.textContent = res.status + " " + res.statusText + "\n" + (text || "(empty)");
-            if (!res.ok) return;
-            let data;
-            try { data = JSON.parse(text); } catch { return; }
-            if (data.status === "NEED_NATIONAL_CODE") {
-                selectPhoneResult.textContent = "Select national code and send OTP.";
-                const candidates = data.candidates || [];
-                nationalCodeOptions.innerHTML = "";
-                candidates.forEach((c) => {
-                    if (!c.nationalCode) return;
-                    const option = document.createElement("option");
-                    option.value = c.nationalCode;
-                    option.label = c.phone ? (c.nationalCode + " " + c.phone) : c.nationalCode;
-                    nationalCodeOptions.appendChild(option);
-                });
-                if (candidates[0] && candidates[0].nationalCode) {
-                    nationalCodeInput.value = candidates[0].nationalCode;
-                }
-                return;
-            }
-            if (data.status === "OTP_SENT") {
-                selectPhoneResult.textContent = "OTP sent. Step 2 not required. Proceed to Step 3.";
-            }
-        } catch (err) {
-            stepOneResult.textContent = "Error: " + err.message;
-        }
-    });
+              currentUsername = identifier;
 
-    selectPhoneForm.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        selectPhoneResult.textContent = "Sending...";
-        const payload = {
-            username: currentUsername,
-            nationalCode: nationalCodeInput.value
-        };
-        try {
-            const res = await fetch("/api/auth/login/select-phone", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "X-Actor-Tenant-Id": currentTenantId },
-                body: JSON.stringify(payload)
-            });
-            const text = await res.text();
-            selectPhoneResult.textContent = res.status + " " + res.statusText + "\n" + (text || "(empty)");
-        } catch (err) {
-            selectPhoneResult.textContent = "Error: " + err.message;
-        }
-    });
+              try {
+                  const res = await fetch('/api/auth/login', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ username: identifier, password: password, captchaToken: captcha })
+                  });
 
-    stepTwoForm.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        stepTwoResult.textContent = "Sending...";
-        const payload = {
-            username: currentUsername,
-            code: document.getElementById("code").value
-        };
-        try {
-            const res = await fetch("/api/auth/verify-2fa", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "X-Actor-Tenant-Id": currentTenantId },
-                body: JSON.stringify(payload)
-            });
-            const text = await res.text();
-            stepTwoResult.textContent = res.status + " " + res.statusText + "\n" + (text || "(empty)");
-        } catch (err) {
-            stepTwoResult.textContent = "Error: " + err.message;
-        }
-    });
-</script>
-</body>
+                  if(!res.ok) throw new Error("ورود ناموفق بود. اطلاعات را بررسی کنید.");
+                  const data = await res.json();
+
+                  if(data.status === 'OTP_SENT') {
+                      currentPhone = identifier; // Fallback if no specific phone is returned
+                      if (data.candidates && data.candidates.length > 0) {
+                          currentPhone = data.candidates[0].phone || identifier;
+                      }
+                      showPanel(panelOtp);
+                  } else if(data.status === 'NEED_NATIONAL_CODE') {
+                      showPanel(panelMethod);
+                  } else {
+                      loginError.textContent = "وضعیت نامشخص.";
+                      loginError.style.display = 'block';
+                  }
+              } catch (err) {
+                  loginError.textContent = err.message;
+                  loginError.style.display = 'block';
+              }
+          });
+      }
+
+      // Handle OTP Login Initiation
+      if(btnOtpLogin) {
+          btnOtpLogin.addEventListener('click', async (e) => {
+              e.preventDefault();
+              const phone = document.getElementById('f-identifier').value;
+              if(!phone) {
+                  loginError.textContent = "شماره موبایل را وارد کنید.";
+                  loginError.style.display = 'block';
+                  return;
+              }
+
+              currentUsername = phone;
+              currentPhone = phone;
+
+              try {
+                  const res = await fetch('/api/auth/login/otp', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ phoneNumber: phone })
+                  });
+
+                  if(!res.ok) throw new Error("خطا در ارسال کد. شماره را بررسی کنید.");
+                  showPanel(panelOtp);
+              } catch (err) {
+                  loginError.textContent = err.message;
+                  loginError.style.display = 'block';
+              }
+          });
+      }
+
+      // Handle Method Selection (simulated for now, just calls select-phone API)
+      const methodForm = panelMethod.querySelector('form');
+      if(methodForm) {
+          methodForm.addEventListener('submit', async (e) => {
+              e.preventDefault();
+              try {
+                  const res = await fetch('/api/auth/login/select-phone', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      // Using US as default nationalCode for demonstration or fetch from UI
+                      body: JSON.stringify({ username: currentUsername, nationalCode: 'IR' })
+                  });
+                  if(!res.ok) throw new Error("خطا در انتخاب روش.");
+                  showPanel(panelOtp);
+              } catch (err) {
+                  alert(err.message);
+              }
+          });
+      }
+
+      // Handle OTP Verification
+      const otpForm = panelOtp.querySelector('form');
+      if(otpForm) {
+          otpForm.addEventListener('submit', async (e) => {
+              e.preventDefault();
+
+              let code = '';
+              const inputs = otpForm.querySelectorAll('.otp-cell');
+              inputs.forEach(inp => code += inp.value);
+
+              try {
+                  const res = await fetch('/api/auth/verify-2fa', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ username: currentUsername, code: code })
+                  });
+
+                  if(!res.ok) throw new Error("کد وارد شده اشتباه است.");
+                  const data = await res.json();
+
+                  if(data.accessToken) {
+                      // Store token if needed, e.g., localStorage.setItem('token', data.accessToken);
+                      showPanel(panelSuccess);
+                      setTimeout(() => {
+                          window.location.href = '/';
+                      }, 2000);
+                  }
+              } catch (err) {
+                  alert(err.message);
+              }
+          });
+      }
+
+      function showPanel(panel) {
+          panelLogin.style.display = 'none';
+          panelMethod.style.display = 'none';
+          panelOtp.style.display = 'none';
+          panelSuccess.style.display = 'none';
+          panel.style.display = 'block';
+
+          if(panel === panelMethod) {
+              const phoneDisplay = panel.querySelector('#phone-display');
+              if(phoneDisplay) phoneDisplay.textContent = currentPhone;
+          }
+          if(panel === panelOtp) {
+              const phoneShow = panel.querySelector('#phone-show');
+              if(phoneShow) phoneShow.textContent = currentPhone;
+          }
+      }
+
+      // Prevent original links from triggering if they are just anchor tags
+      document.querySelectorAll('a').forEach(a => {
+          if (a.getAttribute('href') === 'login.html') {
+              a.addEventListener('click', (e) => {
+                  e.preventDefault();
+                  showPanel(panelLogin);
+              });
+          }
+      });
+    </script>
+  </body>
 </html>
