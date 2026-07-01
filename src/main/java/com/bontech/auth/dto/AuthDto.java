@@ -25,6 +25,8 @@ public final class AuthDto {
 
     public record LoginStartResponse(String status, String message, List<MaskedPhone> candidates, boolean passwordChangeRequired) {}
 
+    public record OtpLoginStartRequest(@NotBlank String phoneNumber) {}
+
     public record SelectPhoneRequest(@NotBlank String username, @NotBlank String nationalCode) {}
 
     public record SelectPhoneResponse(String status, String message, boolean passwordChangeRequired) {}
