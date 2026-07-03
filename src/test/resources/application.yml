@@ -1,0 +1,26 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=MySQL
+    driverClassName: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    database-platform: org.hibernate.dialect.H2Dialect
+  liquibase:
+    enabled: false
+  h2:
+    console:
+      enabled: true
+app:
+  jwt:
+    secret: "01234567890123456789012345678901"
+    expiration-seconds: 3600
+  captcha:
+    url: "https://captcha.example/widget"
+    validate-url: "https://captcha.example/validate"
+  sms:
+    sender-api-url: "https://sms.example/send"
+    sender-api-key: "replace-with-real-key"
