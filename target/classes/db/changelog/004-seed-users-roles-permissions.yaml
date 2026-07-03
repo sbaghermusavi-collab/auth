@@ -1,0 +1,95 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-seed-users-roles-permissions
+      author: you
+      changes:
+        - insert:
+            tableName: users
+            columns:
+              - column:
+                  name: username
+                  value: "admin"
+              - column:
+                  name: password_hash
+                  value: "$2a$10$e.h.ADL/.62s6.d9mHk89uU0h23DBA.wzE4L.y5.d9mHk89uU0h23"
+              - column:
+                  name: system_user
+                  valueBoolean: true
+              - column:
+                  name: password_expires_at
+                  value: "2038-01-19 03:14:07"
+              - column:
+                  name: password_change_required
+                  valueBoolean: false
+              - column:
+                  name: tenant_id
+                  valueComputed: "(SELECT id FROM tenants WHERE code = 'default')"
+              - column:
+                  name: created_at
+                  valueComputed: "CURRENT_TIMESTAMP"
+              - column:
+                  name: updated_at
+                  valueComputed: "CURRENT_TIMESTAMP"
+              - column:
+                  name: created_by
+                  value: "system"
+              - column:
+                  name: updated_by
+                  value: "system"
+              - column:
+                  name: version
+                  value: "1"
+        - insert:
+            tableName: users
+            columns:
+              - column:
+                  name: username
+                  value: "user"
+              - column:
+                  name: password_hash
+                  value: "$2a$10$e.h.ADL/.62s6.d9mHk89uU0h23DBA.wzE4L.y5.d9mHk89uU0h23"
+              - column:
+                  name: system_user
+                  valueBoolean: false
+              - column:
+                  name: password_expires_at
+                  value: "2038-01-19 03:14:07"
+              - column:
+                  name: password_change_required
+                  valueBoolean: false
+              - column:
+                  name: tenant_id
+                  valueComputed: "(SELECT id FROM tenants WHERE code = 'default')"
+              - column:
+                  name: created_at
+                  valueComputed: "CURRENT_TIMESTAMP"
+              - column:
+                  name: updated_at
+                  valueComputed: "CURRENT_TIMESTAMP"
+              - column:
+                  name: created_by
+                  value: "system"
+              - column:
+                  name: updated_by
+                  value: "system"
+              - column:
+                  name: version
+                  value: "1"
+        - insert:
+            tableName: user_roles
+            columns:
+              - column:
+                  name: user_id
+                  valueComputed: "(SELECT id FROM users WHERE username = 'admin')"
+              - column:
+                  name: role_id
+                  valueComputed: "(SELECT id FROM roles WHERE code = 'ADMIN' AND tenant_id = (SELECT id FROM tenants WHERE code = 'default'))"
+        - insert:
+            tableName: user_roles
+            columns:
+              - column:
+                  name: user_id
+                  valueComputed: "(SELECT id FROM users WHERE username = 'user')"
+              - column:
+                  name: role_id
+                  valueComputed: "(SELECT id FROM roles WHERE code = 'USER' AND tenant_id = (SELECT id FROM tenants WHERE code = 'default'))"

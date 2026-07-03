@@ -1,0 +1,2 @@
+id,code,tenant_id,created_at,updated_at,created_by,updated_by,version
+1,ADMIN,1,2026-01-01T00:00:00,2026-01-01T00:00:00,liquibase,liquibase,0

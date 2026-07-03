@@ -1,0 +1,3 @@
+id,code,description,tenant_id,active,created_at,updated_at,created_by,updated_by,version
+1,USER_READ,Read users,1,true,2026-01-01T00:00:00,2026-01-01T00:00:00,liquibase,liquibase,0
+2,USER_IMPERSONATE,Impersonate users,1,true,2026-01-01T00:00:00,2026-01-01T00:00:00,liquibase,liquibase,0

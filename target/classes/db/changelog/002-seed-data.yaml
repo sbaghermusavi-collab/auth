@@ -1,0 +1,25 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-seed-default-data
+      author: codex
+      changes:
+        - loadData:
+            tableName: tenants
+            file: db/data/tenants.csv
+            separator: ','
+            quotchar: '"'
+        - loadData:
+            tableName: permissions
+            file: db/data/permissions.csv
+            separator: ','
+            quotchar: '"'
+        - loadData:
+            tableName: roles
+            file: db/data/roles.csv
+            separator: ','
+            quotchar: '"'
+        - loadData:
+            tableName: role_permissions
+            file: db/data/role_permissions.csv
+            separator: ','
+            quotchar: '"'
