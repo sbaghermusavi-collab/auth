@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -15,7 +16,7 @@ import org.springframework.stereotype.Service;
 public class UserQueryService {
     private final UserAccountRepository repository;
 
-
+    @Transactional(readOnly = true)
     public UserDto.UserAuthzResponse getAuthz(String username, Long tenantId) {
         UserAccount user = repository.findByUsernameAndTenantId(username, tenantId).orElseThrow();
         Set<String> permissions = user.getRoles().stream()
@@ -32,11 +33,13 @@ public class UserQueryService {
                 roles, permissions.stream().toList());
     }
 
+    @Transactional(readOnly = true)
     public UserDto.RoleUsersResponse usersByRole(String roleCode, Long tenantId) {
         List<UserDto.UserSummary> users = repository.findByRoles_CodeAndTenantId(roleCode, tenantId).stream().map(this::toSummary).toList();
         return new UserDto.RoleUsersResponse(roleCode, users);
     }
 
+    @Transactional(readOnly = true)
     public UserDto.PermissionUsersResponse usersByPermission(String permissionCode, Long tenantId) {
         List<UserDto.UserSummary> users = repository.findByRoles_Permissions_CodeAndTenantId(permissionCode, tenantId).stream()
                 .filter(user -> hasActivePermission(user, permissionCode, tenantId))

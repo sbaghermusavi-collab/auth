@@ -35,6 +35,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final ActivityLogService logService;
 
+    @Transactional
     public AuthDto.LoginStartResponse loginStepOne(AuthDto.LoginStartRequest request) {
         if (!captchaService.validate(request.captchaToken())) {
             throw new IllegalArgumentException("Captcha validation failed");
@@ -69,6 +70,7 @@ public class AuthService {
         );
     }
 
+    @Transactional
     public AuthDto.SelectPhoneResponse selectPhone(AuthDto.SelectPhoneRequest request) {
         UserAccount user = userAccountRepository.findByUsername(request.username())
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
@@ -172,6 +174,7 @@ public class AuthService {
         smsService.sendCode(target.getPhoneNumber(), code);
     }
 
+    @Transactional
     public AuthDto.TokenResponse impersonate(AuthDto.ImpersonateRequest request) {
         UserPhoneNumber actorPhone = phoneRepository.findByUser_Username(request.actorUsername()).stream().findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Actor not found"));
