@@ -31,8 +31,6 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
-import java.util.Collection;
-import java.util.stream.Collectors;
 
 @Configuration
 @EnableWebSecurity
@@ -74,29 +72,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/reports/**").hasAnyRole("ADMIN", "TENANT_ADMIN")
                         .anyRequest().authenticated()
                 )
-                .oauth2ResourceServer(resource -> resource.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
+                .oauth2ResourceServer(resource -> resource.jwt(Customizer.withDefaults()));
 
         return http.build();
-    }
-
-    private JwtAuthenticationConverter jwtAuthenticationConverter() {
-        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
-        converter.setJwtGrantedAuthoritiesConverter(jwt -> {
-            Collection<GrantedAuthority> authorities = new java.util.ArrayList<>();
-
-            // Add roles from the roles claim with ROLE_ prefix
-            if (jwt.hasClaim("roles")) {
-                java.util.List<String> roles = jwt.getClaimAsStringList("roles");
-                if (roles != null) {
-                    for (String role : roles) {
-                        authorities.add(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()));
-                    }
-                }
-            }
-
-            return authorities;
-        });
-        return converter;
     }
 
     @Bean
