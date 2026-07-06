@@ -106,17 +106,18 @@ public class SecurityConfig {
 
     @Bean
     public RegisteredClientRepository registeredClientRepository(PasswordEncoder passwordEncoder) {
-        RegisteredClient defaultClient = RegisteredClient.withId("client-id-1")
-                .clientId("auth-client")
-                .clientSecret(passwordEncoder.encode("auth-secret"))
+        RegisteredClient asanakClient = RegisteredClient.withId("asanak-client-1")
+                .clientId("asanak")
+                .clientSecret(passwordEncoder.encode("FoHnEjcMn0ivnr0CV384qicgcEIPuTB4"))
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                //.authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)  // usually not for client_credentials
-                .scope("user.read")
-                .scope("user.write")
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .redirectUri("http://localhost/login/oauth2/code/keycloak")
+                .scope("openid")
+                .scope("profile")
+                .scope("email")
                 .build();
 
-        return new InMemoryRegisteredClientRepository(defaultClient);
+        return new InMemoryRegisteredClientRepository(asanakClient);
     }
 
     @Bean
