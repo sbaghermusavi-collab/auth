@@ -34,3 +34,5 @@ app:
   sms:
     sender-api-url: "https://sms.example/send"
     sender-api-key: "replace-with-real-key"
+server:
+  port: 80
