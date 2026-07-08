@@ -34,23 +34,40 @@ public class AuthService {
     private final SmsService smsService;
     private final JwtService jwtService;
     private final ActivityLogService logService;
+    private final com.bontech.auth.config.AppProperties properties;
 
     @Transactional
     public AuthDto.LoginStartResponse loginStepOne(AuthDto.LoginStartRequest request) {
-        if (!captchaService.validate(request.captchaToken())) {
-            throw new IllegalArgumentException("Captcha validation failed");
+        if (properties.getAuth().isCaptchaEnabled()) {
+            if (request.captchaToken() == null || !captchaService.validate(request.captchaToken())) {
+                throw new IllegalArgumentException("Captcha validation failed");
+            }
         }
 
-        UserAccount user = userAccountRepository.findByUsername(request.username())
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        if (!encoder.matches(request.password(), user.getPasswordHash())) {
-            throw new IllegalArgumentException("Invalid username or password");
+        UserAccount user = findUserByIdentifier(request.identifier());
+
+        if (properties.getAuth().isPasswordEnabled()) {
+            if (request.password() == null || !encoder.matches(request.password(), user.getPasswordHash())) {
+                throw new IllegalArgumentException("Invalid username or password");
+            }
         }
 
         List<UserPhoneNumber> phones = phoneRepository.findByUser_Username(user.getUsername());
         boolean passwordChangeRequired = user.isPasswordChangeRequired() || user.getPasswordExpiresAt().isBefore(Instant.now());
+
+        if (!properties.getAuth().isOtpEnabled()) {
+             // OTP is disabled, issue token immediately
+             logService.log(user, "LOGIN_SUCCESS", "Login successful (OTP disabled)");
+             return new AuthDto.LoginStartResponse(
+                    "SUCCESS",
+                    "Login successful",
+                    phones.stream().map(p -> new AuthDto.MaskedPhone(mask(p.getPhoneNumber()), p.getNationalCode())).toList(),
+                    passwordChangeRequired
+             );
+        }
+
         if (phones.size() > 1) {
-            logService.log(user, "LOGIN_STEP_1", "Username + password + captcha validated; awaiting national code");
+            logService.log(user, "LOGIN_STEP_1", "Validated; awaiting national code");
             return new AuthDto.LoginStartResponse(
                     "NEED_NATIONAL_CODE",
                     "Multiple phone numbers found; select national code",
@@ -60,8 +77,8 @@ public class AuthService {
         }
 
         UserPhoneNumber target = phones.stream().filter(UserPhoneNumber::isPreferredNumber).findFirst().orElse(phones.getFirst());
-        createAndSendChallenge(user, target);
-        logService.log(user, "LOGIN_STEP_1", "Username + password + captcha validated; OTP sent");
+        createAndSendChallenge(user, target, request.deliveryMethod());
+        logService.log(user, "LOGIN_STEP_1", "Validated; OTP sent");
         return new AuthDto.LoginStartResponse(
                 "OTP_SENT",
                 "Two-step code sent",
@@ -72,8 +89,7 @@ public class AuthService {
 
     @Transactional
     public AuthDto.SelectPhoneResponse selectPhone(AuthDto.SelectPhoneRequest request) {
-        UserAccount user = userAccountRepository.findByUsername(request.username())
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        UserAccount user = findUserByIdentifier(request.identifier());
 
         List<UserPhoneNumber> phones = phoneRepository.findByUser_Username(user.getUsername());
         if (phones.isEmpty()) {
@@ -81,14 +97,14 @@ public class AuthService {
         }
         if (phones.size() == 1) {
             UserPhoneNumber target = phones.getFirst();
-            createAndSendChallenge(user, target);
+            createAndSendChallenge(user, target, "sms");
             logService.log(user, "LOGIN_STEP_1", "Single phone detected; OTP sent");
         } else {
             UserPhoneNumber target = phones.stream()
                     .filter(p -> request.nationalCode().equalsIgnoreCase(p.getNationalCode()))
                     .findFirst()
                     .orElseThrow(() -> new IllegalArgumentException("Invalid national code for user"));
-            createAndSendChallenge(user, target);
+            createAndSendChallenge(user, target, "sms");
             logService.log(user, "LOGIN_STEP_1", "National code selected; OTP sent");
         }
 
@@ -98,8 +114,7 @@ public class AuthService {
 
     @Transactional
     public AuthDto.TokenResponse verifySecondStep(AuthDto.TwoStepVerifyRequest request) {
-        UserAccount user = userAccountRepository.findByUsername(request.username())
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        UserAccount user = findUserByIdentifier(request.identifier());
 
         TwoStepChallenge challenge = challengeRepository.findByUser_UsernameAndCodeAndUsedFalse(user.getUsername(), request.code())
                 .orElseThrow(() -> new IllegalArgumentException("Invalid challenge"));
@@ -156,12 +171,20 @@ public class AuthService {
         logService.log(user, "PASSWORD_CHANGED", "Password changed after expiry/login flow");
     }
 
+
+    private UserAccount findUserByIdentifier(String identifier) {
+        return userAccountRepository.findByUsername(identifier)
+                .orElseGet(() -> phoneRepository.findByPhoneNumber(identifier)
+                        .map(UserPhoneNumber::getUser)
+                        .orElseThrow(() -> new IllegalArgumentException("User not found")));
+    }
+
     private String mask(String phone) {
         if (phone.length() < 4) return "****";
         return "*".repeat(phone.length() - 4) + phone.substring(phone.length() - 4);
     }
 
-    private void createAndSendChallenge(UserAccount user, UserPhoneNumber target) {
+    private void createAndSendChallenge(UserAccount user, UserPhoneNumber target, String deliveryMethod) {
         String code = String.format("%06d", new Random().nextInt(999999));
         TwoStepChallenge challenge = new TwoStepChallenge();
         challenge.setUserId(user.getId());
@@ -171,6 +194,9 @@ public class AuthService {
         challenge.setUsed(false);
         challenge.setTenantId(user.getTenantId());
         challengeRepository.save(challenge);
+
+        // Use deliveryMethod if needed (e.g. "voice" vs "sms")
+        // For now, smsService.sendCode is used for both or we can switch if we add voice.
         smsService.sendCode(target.getPhoneNumber(), code);
     }
 

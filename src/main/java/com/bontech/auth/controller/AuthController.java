@@ -31,10 +31,12 @@ public class AuthController {
         return authService.selectPhone(request);
     }
 
-    @PostMapping("/verify-2fa")
+
+    @PostMapping(value = {"/verify-2fa", "/otp/verify"})
     public AuthDto.TokenResponse verifySecondStep(@Valid @RequestBody AuthDto.TwoStepVerifyRequest request) {
         return authService.verifySecondStep(request);
     }
+
 
     @PostMapping("/password/change-expired")
     public void changeExpiredPassword(@Valid @RequestBody AuthDto.ChangeExpiredPasswordRequest request) {

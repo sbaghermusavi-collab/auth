@@ -14,6 +14,17 @@ public class AppProperties {
     private Captcha captcha = new Captcha();
     private Sms sms = new Sms();
 
+    private Auth auth = new Auth();
+
+    @Getter
+    @Setter
+    public static class Auth {
+        private boolean otpEnabled = true;
+        private boolean passwordEnabled = true;
+        private boolean captchaEnabled = true;
+    }
+
+
     @Getter
     @Setter
     public static class Jwt {

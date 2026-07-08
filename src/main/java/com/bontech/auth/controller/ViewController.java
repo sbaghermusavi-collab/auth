@@ -35,9 +35,31 @@ public class ViewController {
         return "register";
     }
 
+
+    @GetMapping("/method")
+    public String method(Model model) {
+        addConfig(model);
+        return "method";
+    }
+
+    @GetMapping("/otp")
+    public String otp(Model model) {
+        addConfig(model);
+        return "otp";
+    }
+
+    @GetMapping("/success")
+    public String success(Model model) {
+        addConfig(model);
+        return "success";
+    }
+
     private void addConfig(Model model) {
         model.addAttribute("captchaUrl", properties.getCaptcha().getUrl());
         model.addAttribute("captchaValidateUrl", properties.getCaptcha().getValidateUrl());
         model.addAttribute("smsSenderApiUrl", properties.getSms().getSenderApiUrl());
+        model.addAttribute("otpEnabled", properties.getAuth().isOtpEnabled());
+        model.addAttribute("passwordEnabled", properties.getAuth().isPasswordEnabled());
+        model.addAttribute("captchaEnabled", properties.getAuth().isCaptchaEnabled());
     }
 }
