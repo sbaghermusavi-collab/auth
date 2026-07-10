@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog logicalFilePath="db/changelog/002-seed-data.yaml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+  <changeSet id="002-seed-default-data" author="codex">
+    <loadData tableName="tenants" file="db/data/tenants.csv" separator="," quotchar="&quot;"/>
+    <loadData tableName="permissions" file="db/data/permissions.csv" separator="," quotchar="&quot;"/>
+    <loadData tableName="roles" file="db/data/roles.csv" separator="," quotchar="&quot;"/>
+    <loadData tableName="role_permissions" file="db/data/role_permissions.csv" separator="," quotchar="&quot;"/>
+  </changeSet>
+</databaseChangeLog>

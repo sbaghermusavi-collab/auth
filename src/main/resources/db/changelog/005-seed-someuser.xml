@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+  <changeSet id="005-seed-someuser" author="you">
+    <insert tableName="users">
+      <column name="username" value="someuser"/>
+      <column name="password_hash" value="$2a$10$e.h.ADL/.62s6.d9mHk89uU0h23DBA.wzE4L.y5.d9mHk89uU0h23"/>
+      <column name="system_user" valueBoolean="false"/>
+      <column name="password_expires_at" value="2038-01-19 03:14:07"/>
+      <column name="password_change_required" valueBoolean="false"/>
+      <column name="tenant_id" valueComputed="(SELECT id FROM tenants WHERE code = 'default')"/>
+      <column name="created_at" valueComputed="CURRENT_TIMESTAMP"/>
+      <column name="updated_at" valueComputed="CURRENT_TIMESTAMP"/>
+      <column name="created_by" value="system"/>
+      <column name="updated_by" value="system"/>
+      <column name="version" value="1"/>
+    </insert>
+    <insert tableName="user_roles">
+      <column name="user_id" valueComputed="(SELECT id FROM users WHERE username = 'someuser')"/>
+      <column name="role_id" valueComputed="(SELECT id FROM roles WHERE code = 'ADMIN' AND tenant_id = (SELECT id FROM tenants WHERE code = 'default'))"/>
+    </insert>
+    <insert tableName="user_roles">
+      <column name="user_id" valueComputed="(SELECT id FROM users WHERE username = 'someuser')"/>
+      <column name="role_id" valueComputed="(SELECT id FROM roles WHERE code = 'USER' AND tenant_id = (SELECT id FROM tenants WHERE code = 'default'))"/>
+    </insert>
+  </changeSet>
+</databaseChangeLog>

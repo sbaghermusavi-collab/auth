@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog logicalFilePath="db/changelog/db.changelog-master.yaml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+  <include file="db/changelog/001-create-tables.xml"/>
+  <include file="db/changelog/002-seed-data.xml"/>
+  <include file="db/changelog/004-seed-users-roles-permissions.xml"/>
+  <include file="db/changelog/005-seed-someuser.xml"/>
+</databaseChangeLog>
