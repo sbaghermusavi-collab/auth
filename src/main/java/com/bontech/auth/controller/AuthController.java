@@ -1,12 +1,17 @@
 package com.bontech.auth.controller;
 
 import com.bontech.auth.dto.AuthDto;
+import com.bontech.auth.dto.UserDto;
+import com.bontech.auth.service.UserQueryService;
 import com.bontech.auth.service.AuthService;
 import com.bontech.auth.service.RegistrationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import java.util.Map;
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -14,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
     private final RegistrationService registrationService;
     private final AuthService authService;
+    private final UserQueryService userQueryService;
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
@@ -47,4 +53,15 @@ public class AuthController {
     public AuthDto.TokenResponse impersonate(@Valid @RequestBody AuthDto.ImpersonateRequest request) {
         return authService.impersonate(request);
     }
+
+    @GetMapping("/me/token")
+    public Map<String, Object> getMeToken(@RequestHeader(value = "X-Actor-Tenant-Id", required = false) Long actorTenantId, JwtAuthenticationToken jwtToken) {
+        UserDto.UserAuthzResponse authz = userQueryService.getAuthz(jwtToken.getName(), actorTenantId);
+        Map<String, Object> response = new HashMap<>();
+        response.put("user", authz);
+        response.put("token", jwtToken.getToken().getTokenValue());
+        response.put("tokenAttributes", jwtToken.getTokenAttributes());
+        return response;
+    }
+
 }
