@@ -469,6 +469,8 @@ document.getElementById('primary').addEventListener('click', async (e) => {
 
         if (res.ok) {
             if (data.status === 'SUCCESS') {
+                if (data.accessToken) localStorage.setItem('accessToken', data.accessToken);
+                if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
                 window.location.href = '/success';
             } else if (data.status === 'OTP_SENT') {
                 window.location.href = '/otp?phone=' + encodeURIComponent(identifier);

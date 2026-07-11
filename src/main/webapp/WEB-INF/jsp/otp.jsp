@@ -136,6 +136,9 @@ document.querySelector('form').addEventListener('submit', async (e) => {
         });
 
         if (res.ok) {
+            const data = await res.json();
+            if (data.accessToken) localStorage.setItem('accessToken', data.accessToken);
+            if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
             window.location.href = '/success';
         } else {
             const data = await res.json();
