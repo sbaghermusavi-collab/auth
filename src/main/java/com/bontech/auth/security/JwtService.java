@@ -18,13 +18,16 @@ public class JwtService {
     private final JwtEncoder jwtEncoder;
     private final JwtDecoder jwtDecoder;
     private final long expirationSeconds;
+    private final long refreshExpirationSeconds;
 
     public JwtService(JwtEncoder jwtEncoder,
                       JwtDecoder jwtDecoder,
-                      @Value("${app.jwt.expiration-seconds:3600}") long expirationSeconds) {
+                      @Value("${app.jwt.expiration-seconds:3600}") long expirationSeconds,
+                      @Value("${app.jwt.refresh-expiration-seconds:86400}") long refreshExpirationSeconds) {
         this.jwtEncoder = jwtEncoder;
         this.jwtDecoder = jwtDecoder;
         this.expirationSeconds = expirationSeconds;
+        this.refreshExpirationSeconds = refreshExpirationSeconds;
     }
 
     public String generate(UserAccount user, String actor) {
@@ -47,11 +50,34 @@ public class JwtService {
         return jwtEncoder.encode(JwtEncoderParameters.from(JwsHeader.with(() -> "HS256").build(), claims)).getTokenValue();
     }
 
+    public String generateRefreshToken(UserAccount user) {
+        Instant now = Instant.now();
+
+        JwtClaimsSet claims = JwtClaimsSet.builder()
+                .id(UUID.randomUUID().toString())
+                .issuer("self")
+                .issuedAt(now)
+                .expiresAt(now.plusSeconds(refreshExpirationSeconds))
+                .subject(user.getUsername())
+                .claim("type", "refresh")
+                .build();
+
+        return jwtEncoder.encode(JwtEncoderParameters.from(JwsHeader.with(() -> "HS256").build(), claims)).getTokenValue();
+    }
+
     public long getExpirationSeconds() {
         return expirationSeconds;
     }
 
+    public long getRefreshExpirationSeconds() {
+        return refreshExpirationSeconds;
+    }
+
     public String extractTokenId(String token) {
         return jwtDecoder.decode(token).getId();
+    }
+
+    public org.springframework.security.oauth2.jwt.Jwt decode(String token) {
+        return jwtDecoder.decode(token);
     }
 }

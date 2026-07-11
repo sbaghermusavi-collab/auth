@@ -54,6 +54,11 @@ public class AuthController {
         return authService.impersonate(request);
     }
 
+    @PostMapping("/refresh")
+    public AuthDto.TokenResponse refresh(@Valid @RequestBody AuthDto.RefreshTokenRequest request) {
+        return authService.refresh(request);
+    }
+
     @GetMapping("/me/token")
     public Map<String, Object> getMeToken(@RequestHeader(value = "X-Actor-Tenant-Id", required = false) Long actorTenantId, JwtAuthenticationToken jwtToken) {
         UserDto.UserAuthzResponse authz = userQueryService.getAuthz(jwtToken.getName(), actorTenantId);

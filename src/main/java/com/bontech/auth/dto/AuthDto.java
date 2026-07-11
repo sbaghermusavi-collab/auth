@@ -23,7 +23,7 @@ public final class AuthDto {
 
     public record LoginStartRequest(@NotBlank String identifier, String password, String captchaToken, String deliveryMethod) {}
 
-    public record LoginStartResponse(String status, String message, List<MaskedPhone> candidates, boolean passwordChangeRequired) {}
+    public record LoginStartResponse(String status, String message, List<MaskedPhone> candidates, boolean passwordChangeRequired, String accessToken, String refreshToken, Long expiresIn) {}
 
     public record SelectPhoneRequest(@NotBlank String identifier, @NotBlank String nationalCode) {}
 
@@ -33,7 +33,9 @@ public final class AuthDto {
 
     public record TwoStepVerifyRequest(@NotBlank String identifier, @NotBlank String code) {}
 
-    public record TokenResponse(String accessToken, String tokenType, long expiresIn) {}
+    public record TokenResponse(String accessToken, String refreshToken, String tokenType, long expiresIn) {}
+
+    public record RefreshTokenRequest(@NotBlank String refreshToken) {}
 
     public record ImpersonateRequest(@NotBlank String actorUsername, @NotBlank String targetUsername) {}
 
