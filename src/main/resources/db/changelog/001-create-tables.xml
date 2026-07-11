@@ -22,7 +22,6 @@
       </column>
       <column name="created_by" type="VARCHAR(100)"/>
       <column name="updated_by" type="VARCHAR(100)"/>
-      <column name="tenant_id" type="BIGINT"/>
       <column name="version" type="BIGINT">
         <constraints nullable="false"/>
       </column>
