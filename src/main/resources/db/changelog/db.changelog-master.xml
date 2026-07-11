@@ -4,4 +4,5 @@
   <include file="db/changelog/002-seed-data.xml"/>
   <include file="db/changelog/004-seed-users-roles-permissions.xml"/>
   <include file="db/changelog/005-seed-someuser.xml"/>
+  <include file="db/changelog/006-add-tenant-id.xml"/>
 </databaseChangeLog>
