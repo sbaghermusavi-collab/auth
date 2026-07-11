@@ -16,7 +16,7 @@ import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.Random;
+import java.security.SecureRandom;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -34,6 +34,8 @@ public class AuthService {
     private final SmsService smsService;
     private final JwtService jwtService;
     private final ActivityLogService logService;
+    private static final SecureRandom OTP_RANDOM = new SecureRandom();
+
     private final com.bontech.auth.config.AppProperties properties;
 
     @Transactional
@@ -53,7 +55,10 @@ public class AuthService {
         }
 
         List<UserPhoneNumber> phones = phoneRepository.findByUser_Username(user.getUsername());
-        boolean passwordChangeRequired = user.isPasswordChangeRequired() || user.getPasswordExpiresAt().isBefore(Instant.now());
+        if (phones.isEmpty() && properties.getAuth().isOtpEnabled()) {
+            throw new IllegalArgumentException("No phone numbers found");
+        }
+        boolean passwordChangeRequired = isPasswordChangeRequired(user);
 
         if (!properties.getAuth().isOtpEnabled()) {
              // OTP is disabled, issue token immediately
@@ -123,7 +128,7 @@ public class AuthService {
             logService.log(user, "LOGIN_STEP_1", "National code selected; OTP sent");
         }
 
-        boolean passwordChangeRequired = user.isPasswordChangeRequired() || user.getPasswordExpiresAt().isBefore(Instant.now());
+        boolean passwordChangeRequired = isPasswordChangeRequired(user);
         return new AuthDto.SelectPhoneResponse("OTP_SENT", "Two-step code sent", passwordChangeRequired);
     }
 
@@ -139,7 +144,7 @@ public class AuthService {
 
         challenge.setUsed(true);
 
-        if (user.isPasswordChangeRequired() || user.getPasswordExpiresAt().isBefore(Instant.now())) {
+        if (isPasswordChangeRequired(user)) {
             logService.log(user, "PASSWORD_EXPIRED", "Password expired; change password required");
             return new AuthDto.TokenResponse("PASSWORD_CHANGE_REQUIRED", null, "None", 0);
         }
@@ -200,8 +205,13 @@ public class AuthService {
         return "*".repeat(phone.length() - 4) + phone.substring(phone.length() - 4);
     }
 
+    private boolean isPasswordChangeRequired(UserAccount user) {
+        Instant expiresAt = user.getPasswordExpiresAt();
+        return user.isPasswordChangeRequired() || expiresAt == null || !expiresAt.isAfter(Instant.now());
+    }
+
     private void createAndSendChallenge(UserAccount user, UserPhoneNumber target, String deliveryMethod) {
-        String code = String.format("%06d", new Random().nextInt(999999));
+        String code = String.format("%06d", OTP_RANDOM.nextInt(1_000_000));
         TwoStepChallenge challenge = new TwoStepChallenge();
         challenge.setUserId(user.getId());
         challenge.setCode(code);
@@ -248,7 +258,7 @@ public class AuthService {
         UserAccount user = userAccountRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        if (user.isPasswordChangeRequired() || user.getPasswordExpiresAt().isBefore(Instant.now())) {
+        if (isPasswordChangeRequired(user)) {
             logService.log(user, "PASSWORD_EXPIRED", "Password expired; change password required during refresh");
             return new AuthDto.TokenResponse("PASSWORD_CHANGE_REQUIRED", null, "None", 0);
         }
