@@ -64,24 +64,16 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST,
-                                "/api/auth/register",
-                                "/api/auth/login",
-                                "/api/auth/login/select-phone",
-                                "/api/auth/verify-2fa",
-                                "/api/auth/otp/verify",
-                                "/api/auth/password/change-expired",
-                                "/api/auth/refresh").permitAll()
-                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        .requestMatchers("/css/**", "/js/**", "/images/**").permitAll()
-                        .requestMatchers("/login.html", "/signup.html", "/otp.html", "/method.html", "/success.html").permitAll()
-                        .requestMatchers("/api/auth/me/**").authenticated()
-                        .requestMatchers("/api/auth/impersonate").hasRole("ADMIN")
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/tenant-admin/**").hasAnyRole("ADMIN", "TENANT_ADMIN")
-                        .requestMatchers("/api/groups/**").hasAnyRole("ADMIN", "TENANT_ADMIN")
-                        .requestMatchers("/api/reports/**").hasAnyRole("ADMIN", "TENANT_ADMIN")
-                        .anyRequest().authenticated()
+                        // For demo — in real apps protect your APIs
+                        .anyRequest().permitAll()
+//                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+//                        .requestMatchers("/css/**", "/js/**", "/images/**").permitAll()
+//                        .requestMatchers("/login", "/signup", "/otp", "/method", "/success","/").permitAll()
+//                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+//                        .requestMatchers("/api/tenant-admin/**").hasAnyRole("ADMIN", "TENANT_ADMIN")
+//                        .requestMatchers("/api/groups/**").hasAnyRole("ADMIN", "TENANT_ADMIN")
+//                        .requestMatchers("/api/reports/**").hasAnyRole("ADMIN", "TENANT_ADMIN")
+//                        .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(resource -> resource.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
 

@@ -1,0 +1,181 @@
+@import url("https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&display=swap");
+
+* {
+  font-family: "Vazirmatn", sans-serif;
+}
+
+.gradient-bg {
+  background: linear-gradient(to right, #fad900, #fa9c00);
+}
+
+.glass-effect {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.dark .glass-effect {
+  background: rgba(30, 41, 59, 0.95);
+}
+
+.input-focus {
+  transition: all 0.3s ease;
+}
+
+.input-focus:focus {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.btn-hover {
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-hover::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: left 0.5s;
+}
+
+.btn-hover:hover::before {
+  left: 100%;
+}
+
+.floating-shapes {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.shape {
+  position: absolute;
+  opacity: 0.1;
+  animation: float 20s infinite ease-in-out;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  33% {
+    transform: translateY(-20px) rotate(120deg);
+  }
+  66% {
+    transform: translateY(20px) rotate(240deg);
+  }
+}
+
+.shape1 {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(45deg, #f4e9f6, #000);
+  border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+  top: 10%;
+  right: 10%;
+  animation-delay: 0s;
+}
+
+.shape2 {
+  width: 120px;
+  height: 120px;
+  background: linear-gradient(45deg, #f4e9f6, #000000);
+  border-radius: 63% 37% 54% 46% / 55% 48% 52% 45%;
+  bottom: 10%;
+  left: 10%;
+  animation-delay: 2s;
+}
+
+.shape3 {
+  width: 100px;
+  height: 100px;
+  background: linear-gradient(45deg, #f4e9f6, #000);
+  border-radius: 41% 59% 41% 59% / 41% 59% 41% 59%;
+  top: 20%;
+  right: 60%;
+  animation-delay: 4s;
+}
+
+.shape4 {
+  width: 100px;
+  height: 100px;
+  background: linear-gradient(45deg, #f4e9f6, #000);
+  border-radius: 41% 59% 41% 59% / 41% 59% 41% 59%;
+  bottom: 20%;
+  right: 33%;
+  animation-delay: 4s;
+}
+
+.shake {
+  animation: shake 0.5s;
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: translateX(-5px);
+  }
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: translateX(5px);
+  }
+}
+
+.success-check {
+  animation: scaleIn 0.5s ease-out;
+}
+
+@keyframes scaleIn {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.loading-spinner {
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top: 3px solid white;
+  width: 20px;
+  height: 20px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}

@@ -18,9 +18,9 @@
       <column name="user_id" valueComputed="(SELECT id FROM users WHERE username = 'someuser')"/>
       <column name="role_id" valueComputed="(SELECT id FROM roles WHERE code = 'ADMIN' AND tenant_id = (SELECT id FROM tenants WHERE code = 'default'))"/>
     </insert>
-    <insert tableName="user_roles">
-      <column name="user_id" valueComputed="(SELECT id FROM users WHERE username = 'someuser')"/>
-      <column name="role_id" valueComputed="(SELECT id FROM roles WHERE code = 'USER' AND tenant_id = (SELECT id FROM tenants WHERE code = 'default'))"/>
-    </insert>
+<!--    <insert tableName="user_roles">-->
+<!--      <column name="user_id" valueComputed="(SELECT id FROM users WHERE username = 'someuser')"/>-->
+<!--      <column name="role_id" valueComputed="(SELECT id FROM roles WHERE code = 'ADMIN' AND tenant_id = (SELECT id FROM tenants WHERE code = 'default'))"/>-->
+<!--    </insert>-->
   </changeSet>
 </databaseChangeLog>

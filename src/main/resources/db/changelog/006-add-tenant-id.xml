@@ -55,5 +55,12 @@
         </addColumn>
         <addForeignKeyConstraint baseTableName="group_permissions" baseColumnNames="tenant_id" referencedTableName="tenants" referencedColumnNames="id" constraintName="fk_group_permissions_tenant"/>
     </changeSet>
-
+<changeSet id="1783768576771-1" author="seyyed">
+    <addColumn tableName="activity_logs">
+        <column name="tenant_id" type="BIGINT" defaultValueNumeric="1">
+            <constraints nullable="false"/>
+        </column>
+    </addColumn>
+    <addForeignKeyConstraint baseTableName="activity_logs" baseColumnNames="tenant_id" referencedTableName="tenants" referencedColumnNames="id" constraintName="fk_activity_logs_tenant"/>
+</changeSet>
 </databaseChangeLog>

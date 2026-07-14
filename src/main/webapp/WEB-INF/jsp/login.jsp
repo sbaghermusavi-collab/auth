@@ -5,7 +5,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>آسانک — ورود، ثبت‌نام</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="/resources/css/stylesLogin.css" />
   </head>
   <body>
     <div class="auth-root">
@@ -449,7 +449,7 @@
       </aside>
     </div>
 
-    <script src="app.js"></script>
+    <script src="/resources/js/app.js"></script>
 
 <script>
 let currentCaptchaId = '';
