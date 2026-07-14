@@ -21,8 +21,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthService {
     private final UserPhoneNumberRepository phoneRepository;
     private final TwoStepChallengeRepository challengeRepository;
@@ -41,7 +44,7 @@ public class AuthService {
     @Transactional
     public AuthDto.LoginStartResponse loginStepOne(AuthDto.LoginStartRequest request) {
         if (properties.getAuth().isCaptchaEnabled()) {
-            if (request.captchaToken() == null || !captchaService.validate(request.captchaToken())) {
+            if (request.captchaToken() == null || !captchaService.validate(request.captchaId(), request.captchaToken())) {
                 throw new IllegalArgumentException("Captcha validation failed");
             }
         }
@@ -210,6 +213,10 @@ public class AuthService {
         return user.isPasswordChangeRequired() || expiresAt == null || !expiresAt.isAfter(Instant.now());
     }
 
+    private void sendOtp(String phone, String code) {
+        log.info("Sending OTP {} to phone {}", code, phone);
+    }
+
     private void createAndSendChallenge(UserAccount user, UserPhoneNumber target, String deliveryMethod) {
         String code = String.format("%06d", OTP_RANDOM.nextInt(1_000_000));
         TwoStepChallenge challenge = new TwoStepChallenge();
@@ -223,6 +230,7 @@ public class AuthService {
 
         // Use deliveryMethod if needed (e.g. "voice" vs "sms")
         // For now, smsService.sendCode is used for both or we can switch if we add voice.
+        sendOtp(target.getPhoneNumber(), code);
         smsService.sendCode(target.getPhoneNumber(), code);
     }
 

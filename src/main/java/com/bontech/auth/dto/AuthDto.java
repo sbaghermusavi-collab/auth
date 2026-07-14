@@ -21,7 +21,7 @@ public final class AuthDto {
 
     public record PhoneInput(@NotBlank String phoneNumber, String nationalCode, boolean preferred) {}
 
-    public record LoginStartRequest(@NotBlank String identifier, String password, String captchaToken, String deliveryMethod) {}
+    public record LoginStartRequest(@NotBlank String identifier, String password, String captchaId, String captchaToken, String deliveryMethod) {}
 
     public record LoginStartResponse(String status, String message, List<MaskedPhone> candidates, boolean passwordChangeRequired, String accessToken, String refreshToken, Long expiresIn) {}
 

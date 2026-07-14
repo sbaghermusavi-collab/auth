@@ -29,8 +29,8 @@ app:
     secret: "01234567890123456789012345678901"
     expiration-seconds: 3600
   captcha:
-    url: "https://captcha.example/widget"
-    validate-url: "https://captcha.example/validate"
+    url: "http://milky.peykasa.ir/api/user-service/captcha/generate"
+    validate-url: "http://milky.peykasa.ir/api/user-service/captcha/validate"
   sms:
     sender-api-url: "https://sms.example/send"
     sender-api-key: "replace-with-real-key"
