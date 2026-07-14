@@ -173,8 +173,8 @@
                   ></span>
                 </div>
                 <div class="captcha-box">
-                  <canvas id="cap-canvas" width="187" height="65"></canvas
-                  ><button
+                  <img id="cap-img" width="187" height="65" alt="captcha" />
+                  <button
                     type="button"
                     class="captcha-refresh"
                     data-act="cap-refresh"
@@ -452,18 +452,48 @@
     <script src="app.js"></script>
 
 <script>
+let currentCaptchaId = '';
+
+async function loadCaptcha() {
+    const captchaUrl = "${captchaUrl}";
+    if (!captchaUrl) return;
+    try {
+        const response = await fetch(captchaUrl);
+        if (response.ok) {
+            currentCaptchaId = response.headers.get('X-Captcha-Id') || '';
+            const blob = await response.blob();
+            const imgUrl = URL.createObjectURL(blob);
+            const imgEl = document.getElementById('cap-img');
+            if (imgEl) {
+                imgEl.src = imgUrl;
+            }
+        }
+    } catch (err) {
+        console.error('Failed to load captcha', err);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadCaptcha();
+    const refreshBtn = document.querySelector('[data-act="cap-refresh"]');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', loadCaptcha);
+    }
+});
+
 document.getElementById('primary').disabled = false; // Enable button
 document.getElementById('primary').addEventListener('click', async (e) => {
     e.preventDefault();
     const identifier = document.getElementById('f-identifier').value;
     const password = document.getElementById('f-pw').value;
     const captchaToken = document.getElementById('f-captcha') ? document.getElementById('f-captcha').value : '';
+    const captchaId = currentCaptchaId;
 
     try {
         const res = await fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ identifier, password, captchaToken })
+            body: JSON.stringify({ identifier, password, captchaId, captchaToken })
         });
         const data = await res.json();
 
