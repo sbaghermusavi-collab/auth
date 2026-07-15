@@ -32,7 +32,7 @@
         </div>
 
         <div class="form-center">
-          <div class="form-card fade-up" id="form-card">
+          <form class="form-card fade-up" id="form-card" action="/login" method="post">
             <div style="margin-bottom: 24px">
               <h1 class="scr-title center">ورود به حساب</h1>
               <p
@@ -56,6 +56,7 @@
                 <input
                   class="fld-input tnum"
                   id="f-identifier"
+                  name="username"
                   placeholder="نام کاربری یا ۰۹۱۲…"
                   autocomplete="off"
                 /><span class="lead"
@@ -86,6 +87,7 @@
                 <input
                   class="fld-input"
                   id="f-pw"
+                  name="password"
                   type="password"
                   placeholder="رمز عبور خود را وارد کنید"
                 /><span class="lead"
@@ -205,10 +207,10 @@
               </p>
             </div>
             <button
+              type="submit"
               class="btn btn-primary btn-block"
               id="primary"
               style="height: 48px; margin-top: 22px"
-              disabled=""
             >
               ورود به حساب<svg
                 width="18"
@@ -227,6 +229,7 @@
             </button>
             <div class="or-div">یا</div>
             <button
+              type="button"
               class="btn btn-outline btn-block"
               id="otp-login"
               style="height: 46px"
@@ -253,7 +256,7 @@
               <a class="link" style="font-weight: 600">حریم خصوصی</a> را
               می&zwnj;پذیرید.
             </p>
-          </div>
+          </form>
         </div>
       </div>
 
@@ -481,39 +484,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-document.getElementById('primary').disabled = false; // Enable button
-document.getElementById('primary').addEventListener('click', async (e) => {
-    e.preventDefault();
-    const identifier = document.getElementById('f-identifier').value;
-    const password = document.getElementById('f-pw').value;
-    const captchaToken = document.getElementById('f-captcha') ? document.getElementById('f-captcha').value : '';
-    const captchaId = currentCaptchaId;
-
-    try {
-        const res = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ identifier, password, captchaId, captchaToken })
-        });
-        const data = await res.json();
-
-        if (res.ok) {
-            if (data.status === 'SUCCESS') {
-                if (data.accessToken) localStorage.setItem('accessToken', data.accessToken);
-                if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
-                window.location.href = '/success';
-            } else if (data.status === 'OTP_SENT') {
-                window.location.href = '/otp?phone=' + encodeURIComponent(identifier);
-            } else if (data.status === 'NEED_NATIONAL_CODE') {
-                window.location.href = '/method?phone=' + encodeURIComponent(identifier);
-            }
-        } else {
-            alert('Login failed: ' + (data.message || res.statusText));
-        }
-    } catch (err) {
-        alert('Error: ' + err.message);
-    }
-});
 
 document.getElementById('otp-login').addEventListener('click', (e) => {
     // Navigate to a dedicated OTP flow if you have one, or just hide password

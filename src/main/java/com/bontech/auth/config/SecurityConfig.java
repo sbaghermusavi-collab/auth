@@ -19,6 +19,9 @@ import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
+import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
+import org.springframework.security.oauth2.core.oidc.endpoint.OidcParameterNames;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 
@@ -28,6 +31,12 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtGra
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+
+import com.bontech.auth.entity.UserAccount;
+import com.bontech.auth.repository.UserAccountRepository;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.core.userdetails.User;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -44,13 +53,15 @@ public class SecurityConfig {
     public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
 
         OAuth2AuthorizationServerConfigurer authorizationServerConfigurer = new OAuth2AuthorizationServerConfigurer();
+
         http
                 .securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
                 .with(authorizationServerConfigurer, configurer ->
-                        configurer.oidc(Customizer.withDefaults())  // optional — enables UserInfo, etc.
+                        configurer.oidc(Customizer.withDefaults())
                 )
-                // Very important — applies the default endpoints & security
-                .oauth2AuthorizationServer(Customizer.withDefaults());   // ← this is often missing!
+                .authorizeHttpRequests(authorize -> authorize.anyRequest().authenticated())
+                .oauth2ResourceServer(resourceServer -> resourceServer.jwt(Customizer.withDefaults()))
+                .formLogin(form -> form.loginPage("/login").permitAll());
 
         // If you still want the old deprecated style temporarily (not recommended):
         // OAuth2AuthorizationServerConfiguration.applyDefaultSecurity(http);
@@ -64,17 +75,10 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        // For demo — in real apps protect your APIs
-                        .anyRequest().permitAll()
-//                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-//                        .requestMatchers("/css/**", "/js/**", "/images/**").permitAll()
-//                        .requestMatchers("/login", "/signup", "/otp", "/method", "/success","/").permitAll()
-//                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-//                        .requestMatchers("/api/tenant-admin/**").hasAnyRole("ADMIN", "TENANT_ADMIN")
-//                        .requestMatchers("/api/groups/**").hasAnyRole("ADMIN", "TENANT_ADMIN")
-//                        .requestMatchers("/api/reports/**").hasAnyRole("ADMIN", "TENANT_ADMIN")
-//                        .anyRequest().authenticated()
+                        .requestMatchers("/login", "/api/auth/**", "/resources/**", "/css/**", "/js/**", "/images/**").permitAll()
+                        .anyRequest().authenticated()
                 )
+                .formLogin(form -> form.loginPage("/login").permitAll())
                 .oauth2ResourceServer(resource -> resource.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
 
         return http.build();
@@ -101,6 +105,19 @@ public class SecurityConfig {
     }
 
     @Bean
+    public UserDetailsService userDetailsService(UserAccountRepository userAccountRepository) {
+        return username -> {
+            UserAccount userAccount = userAccountRepository.findByUsername(username)
+                    .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+
+            return User.withUsername(userAccount.getUsername())
+                    .password(userAccount.getPasswordHash())
+                    .roles(userAccount.getRoles().stream().map(r -> r.getCode()).toArray(String[]::new))
+                    .build();
+        };
+    }
+
+    @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
@@ -117,7 +134,19 @@ public class SecurityConfig {
                 .scope("user.write")
                 .build();
 
-        return new InMemoryRegisteredClientRepository(defaultClient);
+        RegisteredClient asanakClient = RegisteredClient.withId("asanak-client")
+                .clientId("asanak")
+                .clientSecret(passwordEncoder.encode(System.getenv().getOrDefault("ASANAK_CLIENT_SECRET", "FoHnEjcMn0ivnr0CV384qicgcEIPuTB4")))
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .redirectUri("http://localhost/login/oauth2/code/keycloak")
+                .scope("openid")
+                .scope("profile")
+                .scope("email")
+                .build();
+
+        return new InMemoryRegisteredClientRepository(defaultClient, asanakClient);
     }
 
     @Bean
@@ -139,5 +168,16 @@ public class SecurityConfig {
     @Bean
     public JwtDecoder jwtDecoder(SecretKey jwtSecretKey) {
         return NimbusJwtDecoder.withSecretKey(jwtSecretKey).build();
+    }
+
+    @Bean
+    public OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer() {
+        return (context) -> {
+            if (context.getTokenType().getValue().equals("id_token") || context.getTokenType().getValue().equals("access_token")) {
+                context.getClaims().claim("preferred_username", context.getPrincipal().getName());
+                // Add any other claims you might want here.
+                // The principal is typically the authenticated user.
+            }
+        };
     }
 }
