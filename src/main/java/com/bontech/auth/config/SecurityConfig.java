@@ -40,6 +40,10 @@ import org.springframework.security.core.userdetails.User;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
+import org.springframework.http.MediaType;
+
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.stream.Collectors;
@@ -61,6 +65,12 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(authorize -> authorize.anyRequest().authenticated())
                 .oauth2ResourceServer(resourceServer -> resourceServer.jwt(Customizer.withDefaults()))
+                .exceptionHandling(exceptions -> exceptions
+                        .defaultAuthenticationEntryPointFor(
+                                new LoginUrlAuthenticationEntryPoint("/login"),
+                                new MediaTypeRequestMatcher(MediaType.TEXT_HTML)
+                        )
+                )
                 .formLogin(form -> form.loginPage("/login").permitAll());
 
         // If you still want the old deprecated style temporarily (not recommended):
