@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>آسانک — کد تأیید</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="/resources/css/stylesLogin.css" />
 </head>
 <body>
 
@@ -21,11 +21,12 @@
       <span class="name">آسانک</span>
     </div>    <div class="form-center">
       <div class="form-card">
-        <a href="login.html" class="btn btn-ghost btn-sm">← تغییر شماره</a>
+        <a href="/login" class="btn btn-ghost btn-sm">← تغییر شماره</a>
         <h1 class="scr-title">کد تأیید را وارد کنید</h1>
         <p class="scr-sub">کد به شماره <strong id="phone-show"></strong> ارسال شد.</p>
 
-        <form action="success.html" method="get">
+        <form action="/api/auth/otp/verify" method="post">
+          <input type="hidden" name="identifier" id="identifier-hidden">
           <input type="hidden" name="phone" id="phone-hidden">
           <div class="otp-inputs" dir="ltr">
             <input class="otp-cell" maxlength="1" name="c1" required>
@@ -33,7 +34,9 @@
             <input class="otp-cell" maxlength="1" name="c3" required>
             <input class="otp-cell" maxlength="1" name="c4" required>
             <input class="otp-cell" maxlength="1" name="c5" required>
+            <input class="otp-cell" maxlength="1" name="c6" required>
           </div>
+          <p class="fld-hint error" id="otp-error" style="display: none"></p>
           <button type="submit" class="btn btn-primary btn-block">تأیید و ورود</button>
         </form>
       </div>
@@ -101,55 +104,71 @@
 
 <script>
 const params = new URLSearchParams(location.search);
-const phone = params.get('phone');
-document.getElementById('phone-show').textContent = phone;
-document.getElementById('phone-hidden').value = phone;
-</script>
+const identifier = params.get('identifier') || params.get('phone') || '';
+const phone = params.get('phone') || identifier;
+const continueUrl = params.get('continue') || '/success';
 
-<script>
-const params = new URLSearchParams(location.search);
-const phone = params.get('phone');
 document.getElementById('phone-show').textContent = phone;
 document.getElementById('phone-hidden').value = phone;
+document.getElementById('identifier-hidden').value = identifier;
+
+function safeContinueUrl(target) {
+    try {
+        const url = new URL(target, window.location.origin);
+        return url.origin === window.location.origin ? url.pathname + url.search + url.hash : '/success';
+    } catch (err) {
+        return '/success';
+    }
+}
+
+function storeTokens(data) {
+    if (data.accessToken) localStorage.setItem('accessToken', data.accessToken);
+    if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
+    if (data.expiresIn) localStorage.setItem('expiresIn', String(data.expiresIn));
+}
+
+async function readError(response) {
+    try {
+        const data = await response.json();
+        return data.message || data.error || response.statusText;
+    } catch (err) {
+        return response.statusText;
+    }
+}
 
 document.querySelector('form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const c1 = document.querySelector('[name="c1"]').value;
-    const c2 = document.querySelector('[name="c2"]').value;
-    const c3 = document.querySelector('[name="c3"]').value;
-    const c4 = document.querySelector('[name="c4"]').value;
-    const c5 = document.querySelector('[name="c5"]').value;
-    // Some implementations use 6 digits, our UI has 5 inputs but code expects 6 usually. Let's gather what we have.
-    // If backend generates 6, UI needs 6. Assuming the backend generates 6, let's append a dummy '0' or fix UI.
-    // But let's just pass what we gather.
-    let code = c1 + c2 + c3 + c4 + c5;
-    if (code.length === 5) {
-        // Just pad it if needed by backend (the random gen creates 6 digits)
-        code = code + '0'; // Hack for UI mismatch
-    }
+    const errorEl = document.getElementById('otp-error');
+    const code = Array.from(document.querySelectorAll('.otp-cell')).map(input => input.value).join('');
+    errorEl.style.display = 'none';
 
     try {
         const res = await fetch('/api/auth/otp/verify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ identifier: phone, code: code })
+            body: JSON.stringify({ identifier, code })
         });
 
         if (res.ok) {
             const data = await res.json();
-            if (data.accessToken) localStorage.setItem('accessToken', data.accessToken);
-            if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
-            window.location.href = '/success';
+            if (data.accessToken === 'PASSWORD_CHANGE_REQUIRED') {
+                errorEl.textContent = 'Password change is required before login can continue.';
+                errorEl.style.display = 'block';
+                return;
+            }
+            storeTokens(data);
+            window.location.href = safeContinueUrl(continueUrl);
         } else {
-            const data = await res.json();
-            alert('Verification failed: ' + (data.message || res.statusText));
+            errorEl.textContent = await readError(res);
+            errorEl.style.display = 'block';
         }
     } catch (err) {
-        alert('Error: ' + err.message);
+        errorEl.textContent = err.message;
+        errorEl.style.display = 'block';
     }
 });
 </script>
 </body>
 
-<script src="app.js"></script>
+<script src="/resources/js/app.js"></script>
 </html>

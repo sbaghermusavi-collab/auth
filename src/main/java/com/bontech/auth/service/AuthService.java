@@ -87,17 +87,6 @@ public class AuthService {
              );
         }
 
-        if (phones.size() > 1) {
-            logService.log(user, "LOGIN_STEP_1", "Validated; awaiting national code");
-            return new AuthDto.LoginStartResponse(
-                    "NEED_NATIONAL_CODE",
-                    "Multiple phone numbers found; select national code",
-                    phones.stream().map(p -> new AuthDto.MaskedPhone(mask(p.getPhoneNumber()), p.getNationalCode())).toList(),
-                    passwordChangeRequired,
-                    null, null, null
-            );
-        }
-
         UserPhoneNumber target = phones.stream().filter(UserPhoneNumber::isPreferredNumber).findFirst().orElse(phones.getFirst());
         createAndSendChallenge(user, target, request.deliveryMethod());
         logService.log(user, "LOGIN_STEP_1", "Validated; OTP sent");

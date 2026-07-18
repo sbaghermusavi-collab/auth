@@ -32,7 +32,7 @@
         </div>
 
         <div class="form-center">
-          <form class="form-card fade-up" id="form-card" action="/login" method="post">
+          <form class="form-card fade-up" id="form-card" action="/api/auth/login" method="post">
             <div style="margin-bottom: 24px">
               <h1 class="scr-title center">ورود به حساب</h1>
               <p
@@ -206,6 +206,7 @@
                 کد امنیتی نادرست است.
               </p>
             </div>
+            <p class="fld-hint error" id="login-error" style="display: none"></p>
             <button
               type="submit"
               class="btn btn-primary btn-block"
@@ -486,10 +487,94 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 document.getElementById('otp-login').addEventListener('click', (e) => {
-    // Navigate to a dedicated OTP flow if you have one, or just hide password
     e.preventDefault();
     document.getElementById('password-field').style.display = 'none';
-    alert("Please enter identifier and click Login to proceed with OTP.");
+    document.getElementById('primary').click();
+});
+
+function getContinueUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const target = params.get('continue') || params.get('next');
+    if (!target) return '/success';
+    try {
+        const url = new URL(target, window.location.origin);
+        return url.origin === window.location.origin ? url.pathname + url.search + url.hash : '/success';
+    } catch (err) {
+        return '/success';
+    }
+}
+
+function storeTokens(data) {
+    if (data.accessToken) localStorage.setItem('accessToken', data.accessToken);
+    if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
+    if (data.expiresIn) localStorage.setItem('expiresIn', String(data.expiresIn));
+}
+
+async function readError(response) {
+    try {
+        const data = await response.json();
+        return data.message || data.error || response.statusText;
+    } catch (err) {
+        return response.statusText;
+    }
+}
+
+document.getElementById('form-card').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const errorEl = document.getElementById('login-error');
+    const submitBtn = document.getElementById('primary');
+    const identifier = document.getElementById('f-identifier').value.trim();
+    const passwordField = document.getElementById('f-pw');
+    const captchaField = document.getElementById('f-captcha');
+
+    errorEl.style.display = 'none';
+    submitBtn.disabled = true;
+
+    try {
+        const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                identifier,
+                password: passwordField ? passwordField.value : '',
+                captchaId: currentCaptchaId,
+                captchaToken: captchaField ? captchaField.value : '',
+                deliveryMethod: 'sms'
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(await readError(response));
+        }
+
+        const data = await response.json();
+        const continueUrl = getContinueUrl();
+
+        if (data.status === 'SUCCESS' && data.accessToken) {
+            storeTokens(data);
+            window.location.href = continueUrl;
+            return;
+        }
+
+        if (data.status === 'OTP_SENT') {
+            const maskedPhone = data.candidates && data.candidates.length > 0 ? data.candidates[0].phone : identifier;
+            const params = new URLSearchParams({
+                identifier,
+                phone: maskedPhone,
+                continue: continueUrl
+            });
+            window.location.href = '/otp?' + params.toString();
+            return;
+        }
+
+        throw new Error(data.message || 'Login could not continue');
+    } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.style.display = 'block';
+        submitBtn.disabled = false;
+        loadCaptcha();
+    }
 });
 </script>
 </body>

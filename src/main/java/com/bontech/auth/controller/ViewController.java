@@ -14,13 +14,13 @@ public class ViewController {
     @GetMapping("/")
     public String index(Model model) {
         addConfig(model);
-        return "index";
+        return "login";
     }
 
     @GetMapping("/endpoints")
     public String endpoints(Model model) {
         addConfig(model);
-        return "index";
+        return "login";
     }
 
     @GetMapping("/login")
