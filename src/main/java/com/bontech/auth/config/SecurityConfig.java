@@ -61,10 +61,9 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(authorize -> authorize.anyRequest().authenticated())
                 .oauth2ResourceServer(resourceServer -> resourceServer.jwt(Customizer.withDefaults()))
-                .formLogin(form -> form.loginPage("/login").permitAll());
-
-        // If you still want the old deprecated style temporarily (not recommended):
-        // OAuth2AuthorizationServerConfiguration.applyDefaultSecurity(http);
+                .formLogin(form -> form
+                        .loginPage("/login")
+                        .permitAll());
 
         return http.build();
     }
@@ -82,15 +81,26 @@ public class SecurityConfig {
                                 "/method",
                                 "/otp",
                                 "/success",
-                                "/api/auth/**",
+                                "/api/auth/register",
+                                "/api/auth/login",
+                                "/api/auth/login/select-phone",
+                                "/api/auth/verify-2fa",
+                                "/api/auth/otp/verify",
+                                "/api/auth/password/change-expired",
                                 "/resources/**",
                                 "/css/**",
                                 "/js/**",
-                                "/images/**"
+                                "/images/**",
+                                "/WEB-INF/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
-                .formLogin(form -> form.loginPage("/login").permitAll())
+                .formLogin(form -> form
+                        .loginPage("/login")
+                        .permitAll())
+                .logout(logout -> logout
+                        .logoutSuccessUrl("/login?logout")
+                        .permitAll())
                 .oauth2ResourceServer(resource -> resource.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
 
         return http.build();
