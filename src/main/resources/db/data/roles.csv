@@ -1,2 +1,12 @@
 id,code,tenant_id,created_at,updated_at,created_by,updated_by,version
 1,ADMIN,1,2026-01-01T00:00:00,2026-01-01T00:00:00,liquibase,liquibase,0
+2,AGGREGATOR,1,2026-01-01T00:00:00,2026-01-01T00:00:00,liquibase,liquibase,0
+3,CUSTOMER,1,2026-01-01T00:00:00,2026-01-01T00:00:00,liquibase,liquibase,0
+4,CUSTOMER_R1,1,2026-01-01T00:00:00,2026-01-01T00:00:00,liquibase,liquibase,0
+5,PARENT,1,2026-01-01T00:00:00,2026-01-01T00:00:00,liquibase,liquibase,0
+6,ROLE1,1,2026-01-01T00:00:00,2026-01-01T00:00:00,liquibase,liquibase,0
+7,ROLE2,1,2026-01-01T00:00:00,2026-01-01T00:00:00,liquibase,liquibase,0
+8,RP_ADMIN,1,2026-01-01T00:00:00,2026-01-01T00:00:00,liquibase,liquibase,0
+9,RP_CUSTOMER,1,2026-01-01T00:00:00,2026-01-01T00:00:00,liquibase,liquibase,0
+10,SUPER_ADMIN,1,2026-01-01T00:00:00,2026-01-01T00:00:00,liquibase,liquibase,0
+11,default-roles-milky-way,1,2026-01-01T00:00:00,2026-01-01T00:00:00,liquibase,liquibase,0

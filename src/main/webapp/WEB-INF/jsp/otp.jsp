@@ -264,8 +264,10 @@ document.querySelector('form').addEventListener('submit', async (e) => {
 
         if (res.ok) {
             const data = await res.json();
-            if (data.accessToken === 'PASSWORD_CHANGE_REQUIRED' || (continueUrl && continueUrl.includes('/password-change'))) {
-                window.location.href = safeContinueUrl(continueUrl.includes('/password-change') ? continueUrl : '/password-change?identifier=' + encodeURIComponent(identifier));
+            const rawContinue = params.get('continue') || params.get('next') || '';
+            if (data.accessToken === 'PASSWORD_CHANGE_REQUIRED' || rawContinue.includes('/password-change') || continueUrl.includes('/password-change')) {
+                const targetUrl = (rawContinue && rawContinue.includes('/password-change')) ? rawContinue : (continueUrl && continueUrl.includes('/password-change') ? continueUrl : '/password-change?reset=true&identifier=' + encodeURIComponent(identifier));
+                window.location.href = safeContinueUrl(targetUrl);
                 return;
             }
             storeTokens(data);

@@ -53,15 +53,26 @@ const identifier = params.get('identifier') || params.get('phone') || '';
 const continueUrl = params.get('continue') || 'http://localhost:4200/whoami';
 const isReset = params.get('reset') === 'true' || params.get('mode') === 'reset';
 
-if (isReset) {
-    const titleEl = document.getElementById('page-title');
-    if (titleEl) titleEl.textContent = 'تعیین رمز عبور جدید';
-    const subEl = document.getElementById('page-sub');
-    if (subEl) subEl.textContent = 'لطفاً رمز عبور جدید خود را وارد کنید.';
-    const currentGroup = document.getElementById('current-pw-group');
-    if (currentGroup) currentGroup.style.display = 'none';
-    const currentInput = document.getElementById('f-current');
-    if (currentInput) currentInput.removeAttribute('required');
+function applyResetMode() {
+    if (isReset) {
+        const titleEl = document.getElementById('page-title');
+        if (titleEl) titleEl.textContent = 'تعیین رمز عبور جدید';
+        const subEl = document.getElementById('page-sub');
+        if (subEl) subEl.textContent = 'لطفاً رمز عبور جدید خود را وارد کنید.';
+        const currentGroup = document.getElementById('current-pw-group');
+        if (currentGroup) currentGroup.style.display = 'none';
+        const currentInput = document.getElementById('f-current');
+        if (currentInput) {
+            currentInput.removeAttribute('required');
+            currentInput.value = '';
+        }
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', applyResetMode);
+} else {
+    applyResetMode();
 }
 
 function storeTokens(data) {
