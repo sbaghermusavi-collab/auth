@@ -104,7 +104,7 @@
   function init() {
     const page = window.location.pathname.split('/').pop().toLowerCase();
 
-    if (page.includes('login.html')) {
+    if (page.includes('login')) {
       if ($('#cap-canvas')) drawCaptcha();
 
       $('[data-act="cap-refresh"]')?.addEventListener('click', () => {
@@ -127,19 +127,19 @@
         const btn = $('#primary');
         if (btn.disabled) return;
         const phone = $('#f-identifier').value.trim();
-        if (phone) location.href = `method.html?phone=${encodeURIComponent(phone)}&mode=login`;
+        if (phone) location.href = `/method?phone=${encodeURIComponent(phone)}&mode=login`;
       });
 
       $('#otp-login')?.addEventListener('click', () => {
         const phone = $('#f-identifier').value.trim() || '09123456789';
-        location.href = `method.html?phone=${encodeURIComponent(phone)}&mode=login`;
+        location.href = `/method?phone=${encodeURIComponent(phone)}&mode=login`;
       });
 
-      $('[data-act="to-signup"]')?.addEventListener('click', () => location.href = 'signup.html');
+      $('[data-act="to-signup"]')?.addEventListener('click', () => location.href = '/register');
     }
 
     /* صفحه ثبت‌نام */
-    if (page.includes('signup.html')) {
+    if (page.includes('signup') || page.includes('register')) {
       $('[data-act="pw-toggle"]')?.addEventListener('click', function() {
         const pw = $('#f-pw');
         if (!pw) return;
@@ -150,17 +150,10 @@
 
       $$('input').forEach(el => el.addEventListener('input', validateSignup));
 
-      $('#primary')?.addEventListener('click', () => {
-        const btn = $('#primary');
-        if (btn.disabled) return;
-        const phone = $('#f-phone').value.trim();
-        if (phone) location.href = `method.html?phone=${encodeURIComponent(phone)}&mode=signup`;
-      });
-
-      $('[data-act="to-login"]')?.addEventListener('click', () => location.href = 'login.html');
+      $('[data-act="to-login"]')?.addEventListener('click', () => location.href = '/login');
     }
 
-    if (page.includes('otp.html')) {
+    if (page.includes('otp')) {
       displayPhone();
 
       const cells = $$('.otp-cell');

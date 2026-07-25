@@ -12,6 +12,9 @@ import com.bontech.auth.repository.UserAccountRepository;
 import com.bontech.auth.repository.UserPhoneNumberRepository;
 import com.bontech.auth.repository.UserSessionRepository;
 import com.bontech.auth.security.JwtService;
+import com.bontech.auth.security.SessionAuthenticationService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -37,12 +40,16 @@ public class AuthService {
     private final SmsService smsService;
     private final JwtService jwtService;
     private final ActivityLogService logService;
+    private final SessionAuthenticationService sessionAuthenticationService;
     private static final SecureRandom OTP_RANDOM = new SecureRandom();
 
+    private final OtpService otpService;
     private final com.bontech.auth.config.AppProperties properties;
 
     @Transactional
-    public AuthDto.LoginStartResponse loginStepOne(AuthDto.LoginStartRequest request) {
+    public AuthDto.LoginStartResponse loginStepOne(AuthDto.LoginStartRequest request,
+                                                    HttpServletRequest httpRequest,
+                                                    HttpServletResponse httpResponse) {
         if (properties.getAuth().isCaptchaEnabled()) {
             if (request.captchaToken() == null || !captchaService.validate(request.captchaId(), request.captchaToken())) {
                 throw new IllegalArgumentException("Captcha validation failed");
@@ -64,16 +71,22 @@ public class AuthService {
         boolean passwordChangeRequired = isPasswordChangeRequired(user);
 
         if (!properties.getAuth().isOtpEnabled()) {
-             // OTP is disabled, issue token immediately
+             if (passwordChangeRequired) {
+                 logService.log(user, "PASSWORD_EXPIRED", "Password expired; change password required");
+                 return new AuthDto.LoginStartResponse(
+                         "PASSWORD_CHANGE_REQUIRED",
+                         "Password change required",
+                         phones.stream().map(p -> new AuthDto.MaskedPhone(mask(p.getPhoneNumber()), p.getNationalCode())).toList(),
+                         true, null, null, null, null
+                 );
+             }
+
              String token = jwtService.generate(user, null);
              String refreshToken = jwtService.generateRefreshToken(user);
-             UserSession session = new UserSession();
-             session.setUserId(user.getId());
-             session.setSessionTokenId(jwtService.extractTokenId(token));
-             session.setExpiresAt(Instant.now().plusSeconds(jwtService.getExpirationSeconds()));
-             session.setActive(true);
-             session.setTenantId(user.getTenantId());
-             sessionRepository.save(session);
+             saveSession(user, token);
+
+             sessionAuthenticationService.establishSession(httpRequest, httpResponse, user);
+             String redirectUrl = sessionAuthenticationService.resolveRedirectUrl(httpRequest, httpResponse, null);
 
              logService.log(user, "LOGIN_SUCCESS", "Login successful (OTP disabled)");
              return new AuthDto.LoginStartResponse(
@@ -83,20 +96,60 @@ public class AuthService {
                     passwordChangeRequired,
                     token,
                     refreshToken,
-                    jwtService.getExpirationSeconds()
+                    jwtService.getExpirationSeconds(),
+                    redirectUrl
              );
         }
 
         UserPhoneNumber target = phones.stream().filter(UserPhoneNumber::isPreferredNumber).findFirst().orElse(phones.getFirst());
-        createAndSendChallenge(user, target, request.deliveryMethod());
-        logService.log(user, "LOGIN_STEP_1", "Validated; OTP sent");
+
+        if (request.deliveryMethod() != null && !request.deliveryMethod().isBlank()) {
+            otpService.createAndSendChallenge(user, target, request.deliveryMethod());
+            logService.log(user, "LOGIN_STEP_1", "Validated; OTP sent via " + request.deliveryMethod());
+            return new AuthDto.LoginStartResponse(
+                    "OTP_SENT",
+                    "Two-step code sent",
+                    phones.stream().map(p -> new AuthDto.MaskedPhone(mask(p.getPhoneNumber()), p.getNationalCode())).toList(),
+                    passwordChangeRequired,
+                    null, null, null, null
+            );
+        }
+
+        logService.log(user, "LOGIN_STEP_1", "Validated; delivery method selection required");
         return new AuthDto.LoginStartResponse(
-                "OTP_SENT",
-                "Two-step code sent",
+                "NEED_DELIVERY_METHOD",
+                "Please select delivery method",
                 phones.stream().map(p -> new AuthDto.MaskedPhone(mask(p.getPhoneNumber()), p.getNationalCode())).toList(),
                 passwordChangeRequired,
-                null, null, null
+                null, null, null, null
         );
+    }
+
+    @Transactional
+    public AuthDto.SelectPhoneResponse sendOtp(AuthDto.SendOtpRequest request) {
+        UserAccount user = findUserByIdentifier(request.identifier());
+
+        List<UserPhoneNumber> phones = phoneRepository.findByUser_Username(user.getUsername());
+        if (phones.isEmpty()) {
+            throw new IllegalArgumentException("No phone numbers found");
+        }
+        
+        UserPhoneNumber target;
+        if (request.phone() != null && !request.phone().isBlank()) {
+            target = phones.stream()
+                    .filter(p -> p.getPhoneNumber().replaceAll("[^0-9]", "").contains(request.phone().replaceAll("[^0-9]", "")))
+                    .findFirst()
+                    .orElse(phones.getFirst());
+        } else {
+            target = phones.stream().filter(UserPhoneNumber::isPreferredNumber).findFirst().orElse(phones.getFirst());
+        }
+
+        String deliveryMethod = (request.deliveryMethod() != null && !request.deliveryMethod().isBlank()) ? request.deliveryMethod() : "sms";
+        otpService.createAndSendChallenge(user, target, deliveryMethod);
+        logService.log(user, "OTP_DISPATCHED", "OTP sent via " + deliveryMethod);
+
+        boolean passwordChangeRequired = isPasswordChangeRequired(user);
+        return new AuthDto.SelectPhoneResponse("OTP_SENT", "Two-step code sent via " + deliveryMethod, passwordChangeRequired);
     }
 
     @Transactional
@@ -107,58 +160,51 @@ public class AuthService {
         if (phones.isEmpty()) {
             throw new IllegalArgumentException("No phone numbers found");
         }
+        UserPhoneNumber target;
         if (phones.size() == 1) {
-            UserPhoneNumber target = phones.getFirst();
-            createAndSendChallenge(user, target, "sms");
-            logService.log(user, "LOGIN_STEP_1", "Single phone detected; OTP sent");
+            target = phones.getFirst();
         } else {
-            UserPhoneNumber target = phones.stream()
+            target = phones.stream()
                     .filter(p -> request.nationalCode().equalsIgnoreCase(p.getNationalCode()))
                     .findFirst()
                     .orElseThrow(() -> new IllegalArgumentException("Invalid national code for user"));
-            createAndSendChallenge(user, target, "sms");
-            logService.log(user, "LOGIN_STEP_1", "National code selected; OTP sent");
         }
+        otpService.createAndSendChallenge(user, target, "sms");
+        logService.log(user, "LOGIN_STEP_1", "Phone selected; OTP sent");
 
         boolean passwordChangeRequired = isPasswordChangeRequired(user);
         return new AuthDto.SelectPhoneResponse("OTP_SENT", "Two-step code sent", passwordChangeRequired);
     }
 
     @Transactional
-    public AuthDto.TokenResponse verifySecondStep(AuthDto.TwoStepVerifyRequest request) {
+    public AuthDto.TokenResponse verifySecondStep(AuthDto.TwoStepVerifyRequest request,
+                                                   HttpServletRequest httpRequest,
+                                                   HttpServletResponse httpResponse) {
         UserAccount user = findUserByIdentifier(request.identifier());
 
-        TwoStepChallenge challenge = challengeRepository.findByUser_UsernameAndCodeAndUsedFalse(user.getUsername(), request.code())
-                .orElseThrow(() -> new IllegalArgumentException("Invalid challenge"));
-        if (challenge.getExpiresAt().isBefore(Instant.now())) {
-            throw new IllegalArgumentException("Challenge expired");
-        }
-
-        challenge.setUsed(true);
+        otpService.verifyChallenge(user, request.code());
 
         if (isPasswordChangeRequired(user)) {
             logService.log(user, "PASSWORD_EXPIRED", "Password expired; change password required");
-            return new AuthDto.TokenResponse("PASSWORD_CHANGE_REQUIRED", null, "None", 0);
+            return new AuthDto.TokenResponse("PASSWORD_CHANGE_REQUIRED", null, "None", 0, null);
         }
 
         String token = jwtService.generate(user, null);
         String refreshToken = jwtService.generateRefreshToken(user);
-        UserSession session = new UserSession();
-        session.setUserId(user.getId());
-        session.setSessionTokenId(jwtService.extractTokenId(token));
-        session.setExpiresAt(Instant.now().plusSeconds(jwtService.getExpirationSeconds()));
-        session.setActive(true);
-        session.setTenantId(user.getTenantId());
-        sessionRepository.save(session);
+        saveSession(user, token);
+
+        sessionAuthenticationService.establishSession(httpRequest, httpResponse, user);
+        String redirectUrl = sessionAuthenticationService.resolveRedirectUrl(httpRequest, httpResponse, null);
+
         logService.log(user, "LOGIN_SUCCESS", "Second step validated");
-        return new AuthDto.TokenResponse(token, refreshToken, "Bearer", jwtService.getExpirationSeconds());
+        return new AuthDto.TokenResponse(token, refreshToken, "Bearer", jwtService.getExpirationSeconds(), redirectUrl);
     }
 
     @Transactional
-    public void changeExpiredPassword(AuthDto.ChangeExpiredPasswordRequest request) {
-        UserPhoneNumber phone = phoneRepository.findByPhoneNumber(request.phoneNumber())
-                .orElseThrow(() -> new IllegalArgumentException("Phone not found"));
-        UserAccount user = phone.getUser();
+    public AuthDto.TokenResponse changeExpiredPassword(AuthDto.ChangeExpiredPasswordRequest request,
+                                                         HttpServletRequest httpRequest,
+                                                         HttpServletResponse httpResponse) {
+        UserAccount user = findUserByIdentifier(request.identifier());
 
         if (!encoder.matches(request.currentPassword(), user.getPasswordHash())) {
             throw new IllegalArgumentException("Current password is invalid");
@@ -180,8 +226,16 @@ public class AuthService {
         history.setPasswordHash(newHash);
         history.setTenantId(user.getTenantId());
         passwordHistoryRepository.save(history);
-
         logService.log(user, "PASSWORD_CHANGED", "Password changed after expiry/login flow");
+
+        String token = jwtService.generate(user, null);
+        String refreshToken = jwtService.generateRefreshToken(user);
+        saveSession(user, token);
+
+        sessionAuthenticationService.establishSession(httpRequest, httpResponse, user);
+        String redirectUrl = sessionAuthenticationService.resolveRedirectUrl(httpRequest, httpResponse, null);
+
+        return new AuthDto.TokenResponse(token, refreshToken, "Bearer", jwtService.getExpirationSeconds(), redirectUrl);
     }
 
 
@@ -202,8 +256,20 @@ public class AuthService {
         return user.isPasswordChangeRequired() || expiresAt == null || !expiresAt.isAfter(Instant.now());
     }
 
+    private void saveSession(UserAccount user, String token) {
+        UserSession session = new UserSession();
+        session.setUserId(user.getId());
+        session.setSessionTokenId(jwtService.extractTokenId(token));
+        session.setExpiresAt(Instant.now().plusSeconds(jwtService.getExpirationSeconds()));
+        session.setActive(true);
+        session.setTenantId(user.getTenantId());
+        sessionRepository.save(session);
+    }
+
     private void sendOtp(String phone, String code) {
-        log.info("Sending OTP {} to phone {}", code, phone);
+        log.info("==========================================");
+        log.info(" [OTP SERVICE LOG] Phone: {} | Code: {}", phone, code);
+        log.info("==========================================");
     }
 
     private void createAndSendChallenge(UserAccount user, UserPhoneNumber target, String deliveryMethod) {
@@ -235,7 +301,7 @@ public class AuthService {
         String token = jwtService.generate(target, actor.getUsername());
         String refreshToken = jwtService.generateRefreshToken(target);
         logService.log(actor, "IMPERSONATE", "Impersonated " + target.getUsername());
-        return new AuthDto.TokenResponse(token, refreshToken, "Bearer", jwtService.getExpirationSeconds());
+        return new AuthDto.TokenResponse(token, refreshToken, "Bearer", jwtService.getExpirationSeconds(), null);
     }
 
     @Transactional
@@ -257,21 +323,14 @@ public class AuthService {
 
         if (isPasswordChangeRequired(user)) {
             logService.log(user, "PASSWORD_EXPIRED", "Password expired; change password required during refresh");
-            return new AuthDto.TokenResponse("PASSWORD_CHANGE_REQUIRED", null, "None", 0);
+            return new AuthDto.TokenResponse("PASSWORD_CHANGE_REQUIRED", null, "None", 0, null);
         }
 
         String token = jwtService.generate(user, null);
         String refreshToken = jwtService.generateRefreshToken(user);
-
-        UserSession session = new UserSession();
-        session.setUserId(user.getId());
-        session.setSessionTokenId(jwtService.extractTokenId(token));
-        session.setExpiresAt(Instant.now().plusSeconds(jwtService.getExpirationSeconds()));
-        session.setActive(true);
-        session.setTenantId(user.getTenantId());
-        sessionRepository.save(session);
+        saveSession(user, token);
 
         logService.log(user, "REFRESH_SUCCESS", "Token refreshed successfully");
-        return new AuthDto.TokenResponse(token, refreshToken, "Bearer", jwtService.getExpirationSeconds());
+        return new AuthDto.TokenResponse(token, refreshToken, "Bearer", jwtService.getExpirationSeconds(), null);
     }
 }

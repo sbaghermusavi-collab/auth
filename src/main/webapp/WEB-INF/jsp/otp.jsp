@@ -19,7 +19,8 @@
         </svg>
       </span>
       <span class="name">آسانک</span>
-    </div>    <div class="form-center">
+    </div>    
+    <div class="form-center">
       <div class="form-card">
         <a href="/login" class="btn btn-ghost btn-sm">← تغییر شماره</a>
         <h1 class="scr-title">کد تأیید را وارد کنید</h1>
@@ -28,6 +29,7 @@
         <form action="/api/auth/otp/verify" method="post">
           <input type="hidden" name="identifier" id="identifier-hidden">
           <input type="hidden" name="phone" id="phone-hidden">
+          
           <div class="otp-inputs" dir="ltr">
             <input class="otp-cell" maxlength="1" name="c1" required>
             <input class="otp-cell" maxlength="1" name="c2" required>
@@ -36,12 +38,23 @@
             <input class="otp-cell" maxlength="1" name="c5" required>
             <input class="otp-cell" maxlength="1" name="c6" required>
           </div>
-          <p class="fld-hint error" id="otp-error" style="display: none"></p>
-          <button type="submit" class="btn btn-primary btn-block">تأیید و ورود</button>
+
+          <div style="margin-top: 18px; text-align: center;">
+            <p id="timer-box" style="font-size: 14px; color: var(--text-muted); margin-bottom: 8px;">
+              زمان باقی‌مانده تا ارسال مجدد: <strong id="countdown" style="color: #0C747C; font-family: monospace; font-size: 16px;">03:00</strong>
+            </p>
+            <button type="button" id="resend-btn" class="btn btn-outline" style="display: none; margin: 0 auto; height: 38px; font-size: 13.5px;" disabled>
+              ارسال مجدد کد تأیید
+            </button>
+          </div>
+
+          <p class="fld-hint error" id="otp-error" style="display: none; margin-top: 12px;"></p>
+          <button type="submit" class="btn btn-primary btn-block" style="margin-top: 20px;">تأیید و ورود</button>
         </form>
       </div>
     </div>
   </div>
+  
   <aside class="auth-dark">
     <div class="auth-glow g1"></div>
     <div class="auth-glow g2"></div>
@@ -136,6 +149,71 @@ async function readError(response) {
     }
 }
 
+const otpExpirationSeconds = ${otpExpirationSeconds != null ? otpExpirationSeconds : 180};
+let timerInterval;
+let remainingSeconds = otpExpirationSeconds;
+
+function startCountdown() {
+    remainingSeconds = otpExpirationSeconds;
+    document.getElementById('resend-btn').style.display = 'none';
+    document.getElementById('resend-btn').disabled = true;
+    document.getElementById('timer-box').style.display = 'block';
+
+    updateTimerDisplay();
+    clearInterval(timerInterval);
+
+    timerInterval = setInterval(() => {
+        remainingSeconds--;
+        updateTimerDisplay();
+        if (remainingSeconds <= 0) {
+            clearInterval(timerInterval);
+            document.getElementById('timer-box').style.display = 'none';
+            document.getElementById('resend-btn').style.display = 'block';
+            document.getElementById('resend-btn').disabled = false;
+        }
+    }, 1000);
+}
+
+function updateTimerDisplay() {
+    const mins = Math.floor(Math.max(0, remainingSeconds) / 60);
+    const secs = Math.max(0, remainingSeconds) % 60;
+    const formatted = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+    const el = document.getElementById('countdown');
+    if (el) el.textContent = formatted;
+}
+
+startCountdown();
+
+document.getElementById('resend-btn').addEventListener('click', async () => {
+    const errorEl = document.getElementById('otp-error');
+    const resendBtn = document.getElementById('resend-btn');
+    resendBtn.disabled = true;
+    errorEl.style.display = 'none';
+
+    const deliveryMethod = params.get('delivery') || 'sms';
+
+    try {
+        const res = await fetch('/api/auth/resend-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ identifier, phone, deliveryMethod })
+        });
+
+        if (res.ok) {
+            startCountdown();
+            alert('کد تأیید جدید ارسال شد.');
+        } else {
+            errorEl.textContent = await readError(res);
+            errorEl.style.display = 'block';
+            resendBtn.disabled = false;
+        }
+    } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.style.display = 'block';
+        resendBtn.disabled = false;
+    }
+});
+
 document.querySelector('form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const errorEl = document.getElementById('otp-error');
@@ -152,12 +230,12 @@ document.querySelector('form').addEventListener('submit', async (e) => {
         if (res.ok) {
             const data = await res.json();
             if (data.accessToken === 'PASSWORD_CHANGE_REQUIRED') {
-                errorEl.textContent = 'Password change is required before login can continue.';
-                errorEl.style.display = 'block';
+                const pwParams = new URLSearchParams({ identifier, continue: continueUrl });
+                window.location.href = '/password-change?' + pwParams.toString();
                 return;
             }
             storeTokens(data);
-            window.location.href = safeContinueUrl(continueUrl);
+            window.location.href = data.redirectUrl || safeContinueUrl(continueUrl);
         } else {
             errorEl.textContent = await readError(res);
             errorEl.style.display = 'block';
@@ -167,6 +245,22 @@ document.querySelector('form').addEventListener('submit', async (e) => {
         errorEl.style.display = 'block';
     }
 });
+
+(function() {
+    const timeoutSeconds = ${loginInactivityTimeoutSeconds != null ? loginInactivityTimeoutSeconds : 180};
+    let idleTimer;
+    function resetTimer() {
+        clearTimeout(idleTimer);
+        idleTimer = setTimeout(() => {
+            alert('نشست شما به دلیل عدم فعالیت منقضی شد.');
+            window.location.href = '/login?expired=true';
+        }, timeoutSeconds * 1000);
+    }
+    ['mousemove', 'keydown', 'click', 'touchstart'].forEach(evt => {
+        window.addEventListener(evt, resetTimer);
+    });
+    resetTimer();
+})();
 </script>
 </body>
 

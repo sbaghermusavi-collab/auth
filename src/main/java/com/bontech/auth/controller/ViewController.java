@@ -49,6 +49,11 @@ public class ViewController {
         return "register";
     }
 
+    @GetMapping("/signup")
+    public String signup(Model model) {
+        return "redirect:/register";
+    }
+
 
     @GetMapping("/method")
     public String method(Model model) {
@@ -60,6 +65,12 @@ public class ViewController {
     public String otp(Model model) {
         addConfig(model);
         return "otp";
+    }
+
+    @GetMapping("/password-change")
+    public String passwordChange(Model model) {
+        addConfig(model);
+        return "password-change";
     }
 
     @GetMapping("/success")
@@ -75,5 +86,7 @@ public class ViewController {
         model.addAttribute("otpEnabled", properties.getAuth().isOtpEnabled());
         model.addAttribute("passwordEnabled", properties.getAuth().isPasswordEnabled());
         model.addAttribute("captchaEnabled", properties.getAuth().isCaptchaEnabled());
+        model.addAttribute("otpExpirationSeconds", properties.getAuth().getOtpExpirationSeconds());
+        model.addAttribute("loginInactivityTimeoutSeconds", properties.getAuth().getLoginInactivityTimeoutSeconds());
     }
 }

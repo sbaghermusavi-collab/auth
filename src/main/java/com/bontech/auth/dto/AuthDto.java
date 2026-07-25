@@ -23,24 +23,26 @@ public final class AuthDto {
 
     public record LoginStartRequest(@NotBlank String identifier, String password, String captchaId, String captchaToken, String deliveryMethod) {}
 
-    public record LoginStartResponse(String status, String message, List<MaskedPhone> candidates, boolean passwordChangeRequired, String accessToken, String refreshToken, Long expiresIn) {}
+    public record LoginStartResponse(String status, String message, List<MaskedPhone> candidates, boolean passwordChangeRequired, String accessToken, String refreshToken, Long expiresIn, String redirectUrl) {}
 
     public record SelectPhoneRequest(@NotBlank String identifier, @NotBlank String nationalCode) {}
 
     public record SelectPhoneResponse(String status, String message, boolean passwordChangeRequired) {}
 
+    public record SendOtpRequest(@NotBlank String identifier, String phone, String deliveryMethod) {}
+
     public record MaskedPhone(String phone, String nationalCode) {}
 
     public record TwoStepVerifyRequest(@NotBlank String identifier, @NotBlank String code) {}
 
-    public record TokenResponse(String accessToken, String refreshToken, String tokenType, long expiresIn) {}
+    public record TokenResponse(String accessToken, String refreshToken, String tokenType, long expiresIn, String redirectUrl) {}
 
     public record RefreshTokenRequest(@NotBlank String refreshToken) {}
 
     public record ImpersonateRequest(@NotBlank String actorUsername, @NotBlank String targetUsername) {}
 
     public record ChangeExpiredPasswordRequest(
-            @NotBlank String phoneNumber,
+            @NotBlank String identifier,
             @NotBlank String currentPassword,
             @NotBlank @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d).{8,}$", message = "Password must have letters and numbers and min length 8") String newPassword
     ) {}

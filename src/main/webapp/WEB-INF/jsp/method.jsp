@@ -4,8 +4,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>آسانک — انتخاب روش</title>
-  <link rel="stylesheet" href="styles.css" />
+  <title>آسانک — انتخاب روش دریافت کد</title>
+  <link rel="stylesheet" href="/resources/css/stylesLogin.css" />
 </head>
 <body>
 
@@ -19,22 +19,31 @@
         </svg>
       </span>
       <span class="name">آسانک</span>
-    </div>    <div class="form-center">
+    </div>
+    <div class="form-center">
       <div class="form-card">
-        <a href="login.html" class="btn btn-ghost btn-sm">← تغییر شماره</a>
+        <a href="/login" class="btn btn-ghost btn-sm">← تغییر شماره</a>
         <h1 class="scr-title">روش دریافت کد را انتخاب کنید</h1>
-        <p class="scr-sub">کد به شماره <span id="phone-display" class="bold-ink"></span> ارسال خواهد شد.</p>
+        <p class="scr-sub">کد تأیید به شماره <span id="phone-display" class="bold-ink"></span> ارسال خواهد شد.</p>
 
-        <form action="otp.html" method="get" id="method-form">
+        <form action="/otp" method="get" id="method-form">
           <input type="hidden" name="phone" id="phone-hidden">
           <input type="hidden" name="delivery" id="delivery-input" value="sms">
 
           <div class="method-list">
-            <button type="button" class="method active" data-delivery="sms">پیامک</button>
-            <button type="button" class="method" data-delivery="voice">تماس صوتی</button>
+            <button type="button" class="method active" data-delivery="sms">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 6px;"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+              پیامک (SMS)
+            </button>
+            <button type="button" class="method" data-delivery="voice">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 6px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              تماس صوتی
+            </button>
           </div>
 
-          <button type="submit" class="btn btn-primary btn-block">ارسال کد →</button>
+          <button type="submit" class="btn btn-primary btn-block" id="send-btn" style="height: 48px; margin-top: 20px;">
+            ارسال کد تأیید →
+          </button>
         </form>
       </div>
     </div>
@@ -102,22 +111,10 @@
 
 <script>
 const params = new URLSearchParams(location.search);
-const phone = params.get('phone') || '09123456789';
-document.getElementById('phone-display').textContent = phone;
-document.getElementById('phone-hidden').value = phone;
+const identifier = params.get('identifier') || params.get('phone') || '';
+const phone = params.get('phone') || identifier;
+const continueUrl = params.get('continue') || '/success';
 
-document.querySelectorAll('.method').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.method').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('delivery-input').value = btn.dataset.delivery;
-  });
-});
-</script>
-
-<script>
-const params = new URLSearchParams(location.search);
-const phone = params.get('phone') || '';
 document.getElementById('phone-display').textContent = phone;
 document.getElementById('phone-hidden').value = phone;
 
@@ -131,28 +128,50 @@ document.querySelectorAll('.method').forEach(btn => {
 
 document.getElementById('method-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    // Assuming nationalCode is what needs to be selected if we came here from NEED_NATIONAL_CODE.
-    // For simplicity, we just resubmit login with deliveryMethod if we altered the backend to support it.
-    // Or we call selectPhone endpoint if it's the national code issue.
-    // Let's assume this page just redirects to OTP after calling select-phone or similar.
-    // Since the prompt requested method voice/sms to be added, let's call login with it.
     const deliveryMethod = document.getElementById('delivery-input').value;
+    const sendBtn = document.getElementById('send-btn');
+    sendBtn.disabled = true;
 
-    // In a real app we'd need the national code. For this simplified flow, we will call login again with deliveryMethod.
-    const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier: phone, deliveryMethod: deliveryMethod, password: '', captchaToken: '' })
-    });
+    try {
+        const res = await fetch('/api/auth/send-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ identifier, phone, deliveryMethod })
+        });
 
-    if (res.ok) {
-        window.location.href = '/otp?phone=' + encodeURIComponent(phone);
-    } else {
-        alert('Failed to send OTP.');
+        if (res.ok) {
+            const redirectParams = new URLSearchParams({
+                identifier,
+                phone,
+                delivery: deliveryMethod,
+                continue: continueUrl
+            });
+            window.location.href = '/otp?' + redirectParams.toString();
+        } else {
+            alert('خطا در ارسال کد. لطفاً دوباره تلاش کنید.');
+            sendBtn.disabled = false;
+        }
+    } catch (err) {
+        alert('خطا در ارتباط با سرور: ' + err.message);
+        sendBtn.disabled = false;
     }
 });
+
+(function() {
+    const timeoutSeconds = ${loginInactivityTimeoutSeconds != null ? loginInactivityTimeoutSeconds : 180};
+    let idleTimer;
+    function resetTimer() {
+        clearTimeout(idleTimer);
+        idleTimer = setTimeout(() => {
+            alert('نشست شما به دلیل عدم فعالیت منقضی شد.');
+            window.location.href = '/login?expired=true';
+        }, timeoutSeconds * 1000);
+    }
+    ['mousemove', 'keydown', 'click', 'touchstart'].forEach(evt => {
+        window.addEventListener(evt, resetTimer);
+    });
+    resetTimer();
+})();
 </script>
 </body>
-
-<script src="app.js"></script>
 </html>

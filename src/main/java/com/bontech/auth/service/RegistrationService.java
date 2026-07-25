@@ -30,11 +30,19 @@ public class RegistrationService {
 
     @Transactional
     public UserAccount register(AuthDto.RegistrationRequest request) {
-        Tenant tenant = tenantRepository.findByCode(request.tenantCode()).orElseGet(() -> {
+        if (userRepository.findByUsername(request.username()).isPresent()) {
+            throw new IllegalArgumentException("Username already exists");
+        }
+
+        String tenantCode = (request.tenantCode() != null && !request.tenantCode().isBlank()) ? request.tenantCode() : "DEFAULT";
+        String tenantName = (request.tenantName() != null && !request.tenantName().isBlank()) ? request.tenantName() : "Default Tenant";
+        String tenantBaseUrl = (request.tenantBaseUrl() != null && !request.tenantBaseUrl().isBlank()) ? request.tenantBaseUrl() : "http://localhost";
+
+        Tenant tenant = tenantRepository.findByCode(tenantCode).orElseGet(() -> {
             Tenant t = new Tenant();
-            t.setCode(request.tenantCode());
-            t.setName(request.tenantName());
-            t.setBaseUrl(request.tenantBaseUrl());
+            t.setCode(tenantCode);
+            t.setName(tenantName);
+            t.setBaseUrl(tenantBaseUrl);
             return tenantRepository.save(t);
         });
 
@@ -55,14 +63,18 @@ public class RegistrationService {
         history.setTenantId(tenant.getId());
         passwordHistoryRepository.save(history);
 
-        for (AuthDto.PhoneInput phone : request.phones()) {
-            UserPhoneNumber p = new UserPhoneNumber();
-            p.setUserId(savedUser.getId());
-            p.setPhoneNumber(phone.phoneNumber());
-            p.setNationalCode(phone.nationalCode());
-            p.setPreferredNumber(phone.preferred());
-            p.setTenantId(tenant.getId());
-            phoneRepository.save(p);
+        if (request.phones() != null) {
+            for (AuthDto.PhoneInput phone : request.phones()) {
+                if (phone != null && phone.phoneNumber() != null && !phone.phoneNumber().isBlank()) {
+                    UserPhoneNumber p = new UserPhoneNumber();
+                    p.setUserId(savedUser.getId());
+                    p.setPhoneNumber(phone.phoneNumber());
+                    p.setNationalCode(phone.nationalCode() != null ? phone.nationalCode() : "IR");
+                    p.setPreferredNumber(phone.preferred());
+                    p.setTenantId(tenant.getId());
+                    phoneRepository.save(p);
+                }
+            }
         }
         return savedUser;
     }

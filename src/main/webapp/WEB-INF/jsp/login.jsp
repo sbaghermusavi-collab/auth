@@ -42,7 +42,7 @@
                 حساب کاربری ندارید؟
 
 
-                <a class="link" href="signup.html">
+                <a class="link" href="/register">
   ثبت&zwnj;نام کنید
 </a>
 
@@ -539,8 +539,7 @@ document.getElementById('form-card').addEventListener('submit', async (e) => {
                 identifier,
                 password: passwordField ? passwordField.value : '',
                 captchaId: currentCaptchaId,
-                captchaToken: captchaField ? captchaField.value : '',
-                deliveryMethod: 'sms'
+                captchaToken: captchaField ? captchaField.value : ''
             })
         });
 
@@ -553,7 +552,24 @@ document.getElementById('form-card').addEventListener('submit', async (e) => {
 
         if (data.status === 'SUCCESS' && data.accessToken) {
             storeTokens(data);
-            window.location.href = continueUrl;
+            window.location.href = data.redirectUrl || continueUrl;
+            return;
+        }
+
+        if (data.status === 'PASSWORD_CHANGE_REQUIRED') {
+            const pwParams = new URLSearchParams({ identifier, continue: continueUrl });
+            window.location.href = '/password-change?' + pwParams.toString();
+            return;
+        }
+
+        if (data.status === 'NEED_DELIVERY_METHOD') {
+            const maskedPhone = data.candidates && data.candidates.length > 0 ? data.candidates[0].phone : identifier;
+            const params = new URLSearchParams({
+                identifier,
+                phone: maskedPhone,
+                continue: continueUrl
+            });
+            window.location.href = '/method?' + params.toString();
             return;
         }
 
@@ -574,8 +590,23 @@ document.getElementById('form-card').addEventListener('submit', async (e) => {
         errorEl.style.display = 'block';
         submitBtn.disabled = false;
         loadCaptcha();
+}});
+
+(function() {
+    const timeoutSeconds = ${loginInactivityTimeoutSeconds != null ? loginInactivityTimeoutSeconds : 180};
+    let idleTimer;
+    function resetTimer() {
+        clearTimeout(idleTimer);
+        idleTimer = setTimeout(() => {
+            alert('نشست شما به دلیل عدم فعالیت منقضی شد.');
+            window.location.href = '/login?expired=true';
+        }, timeoutSeconds * 1000);
     }
-});
+    ['mousemove', 'keydown', 'click', 'touchstart'].forEach(evt => {
+        window.addEventListener(evt, resetTimer);
+    });
+    resetTimer();
+})();
 </script>
 </body>
 

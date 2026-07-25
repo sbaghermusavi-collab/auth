@@ -22,6 +22,9 @@ public class AppProperties {
         private boolean otpEnabled = true;
         private boolean passwordEnabled = true;
         private boolean captchaEnabled = true;
+        private boolean testMode = true;
+        private long otpExpirationSeconds = 180;
+        private long loginInactivityTimeoutSeconds = 180;
     }
 
 
