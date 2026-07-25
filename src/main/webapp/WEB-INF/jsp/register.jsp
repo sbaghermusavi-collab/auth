@@ -236,8 +236,28 @@
         else meter.classList.add('s3');
     });
 
+    function safeContinueUrl(target) {
+        if (!target || target === '/success') return 'http://localhost:4200/whoami';
+        try {
+            const url = new URL(target, window.location.origin);
+            if (url.protocol === 'http:' || url.protocol === 'https:') {
+                return url.href;
+            }
+            return url.pathname + url.search + url.hash;
+        } catch (err) {
+            return target || 'http://localhost:4200/whoami';
+        }
+    }
+
+    function getContinueUrl() {
+        const params = new URLSearchParams(window.location.search);
+        const target = params.get('continue') || params.get('next');
+        return safeContinueUrl(target);
+    }
+
     document.getElementById('otp-login')?.addEventListener('click', () => {
-        window.location.href = '/login';
+        const continueUrl = getContinueUrl();
+        window.location.href = '/login?continue=' + encodeURIComponent(continueUrl);
     });
 
     document.getElementById('register-form').addEventListener('submit', async (e) => {
@@ -274,7 +294,12 @@
             });
 
             if (res.ok) {
-                window.location.href = '/login?registered=true';
+                const redirectParams = new URLSearchParams({
+                    identifier: username,
+                    phone: phone,
+                    continue: getContinueUrl()
+                });
+                window.location.href = '/method?' + redirectParams.toString();
             } else {
                 let msg = 'ثبت‌نام ناموفق بود.';
                 try {

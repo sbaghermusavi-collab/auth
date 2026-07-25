@@ -86,7 +86,7 @@ public class AuthService {
              saveSession(user, token);
 
              sessionAuthenticationService.establishSession(httpRequest, httpResponse, user);
-             String redirectUrl = sessionAuthenticationService.resolveRedirectUrl(httpRequest, httpResponse, null);
+             String redirectUrl = sessionAuthenticationService.resolveRedirectUrl(httpRequest, httpResponse, "http://localhost:4200/whoami");
 
              logService.log(user, "LOGIN_SUCCESS", "Login successful (OTP disabled)");
              return new AuthDto.LoginStartResponse(
@@ -194,7 +194,7 @@ public class AuthService {
         saveSession(user, token);
 
         sessionAuthenticationService.establishSession(httpRequest, httpResponse, user);
-        String redirectUrl = sessionAuthenticationService.resolveRedirectUrl(httpRequest, httpResponse, null);
+        String redirectUrl = sessionAuthenticationService.resolveRedirectUrl(httpRequest, httpResponse, "http://localhost:4200/whoami");
 
         logService.log(user, "LOGIN_SUCCESS", "Second step validated");
         return new AuthDto.TokenResponse(token, refreshToken, "Bearer", jwtService.getExpirationSeconds(), redirectUrl);
@@ -233,7 +233,41 @@ public class AuthService {
         saveSession(user, token);
 
         sessionAuthenticationService.establishSession(httpRequest, httpResponse, user);
-        String redirectUrl = sessionAuthenticationService.resolveRedirectUrl(httpRequest, httpResponse, null);
+        String redirectUrl = sessionAuthenticationService.resolveRedirectUrl(httpRequest, httpResponse, "http://localhost:4200/whoami");
+
+        return new AuthDto.TokenResponse(token, refreshToken, "Bearer", jwtService.getExpirationSeconds(), redirectUrl);
+    }
+
+    @Transactional
+    public AuthDto.TokenResponse resetPassword(AuthDto.ResetPasswordRequest request,
+                                               HttpServletRequest httpRequest,
+                                               HttpServletResponse httpResponse) {
+        UserAccount user = findUserByIdentifier(request.identifier());
+
+        List<PasswordHistory> last3 = passwordHistoryRepository.findTop3ByUser_UsernameOrderByCreatedAtDesc(user.getUsername());
+        boolean reused = last3.stream().anyMatch(p -> encoder.matches(request.newPassword(), p.getPasswordHash()));
+        if (reused) {
+            throw new IllegalArgumentException("New password cannot match last 3 passwords");
+        }
+
+        String newHash = encoder.encode(request.newPassword());
+        user.setPasswordHash(newHash);
+        user.setPasswordChangeRequired(false);
+        user.setPasswordExpiresAt(Instant.now().plus(90, ChronoUnit.DAYS));
+
+        PasswordHistory history = new PasswordHistory();
+        history.setUserId(user.getId());
+        history.setPasswordHash(newHash);
+        history.setTenantId(user.getTenantId());
+        passwordHistoryRepository.save(history);
+        logService.log(user, "PASSWORD_RESET", "Password reset successfully");
+
+        String token = jwtService.generate(user, null);
+        String refreshToken = jwtService.generateRefreshToken(user);
+        saveSession(user, token);
+
+        sessionAuthenticationService.establishSession(httpRequest, httpResponse, user);
+        String redirectUrl = sessionAuthenticationService.resolveRedirectUrl(httpRequest, httpResponse, "http://localhost:4200/whoami");
 
         return new AuthDto.TokenResponse(token, refreshToken, "Bearer", jwtService.getExpirationSeconds(), redirectUrl);
     }

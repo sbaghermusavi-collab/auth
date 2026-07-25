@@ -50,6 +50,31 @@ public class SessionAuthenticationService {
      */
     public String resolveRedirectUrl(HttpServletRequest request, HttpServletResponse response, String fallback) {
         SavedRequest saved = requestCache.getRequest(request, response);
-        return saved != null ? saved.getRedirectUrl() : fallback;
+        if (saved != null) {
+            String redirectUrl = saved.getRedirectUrl();
+            requestCache.removeRequest(request, response);
+            if (isValidAppRedirectUrl(redirectUrl)) {
+                return redirectUrl;
+            }
+        }
+        return fallback;
+    }
+
+    private boolean isValidAppRedirectUrl(String url) {
+        if (url == null || url.isBlank()) return false;
+        String path = url.toLowerCase();
+        int queryIdx = path.indexOf('?');
+        if (queryIdx != -1) {
+            path = path.substring(0, queryIdx);
+        }
+        return !path.endsWith(".js") &&
+               !path.endsWith(".css") &&
+               !path.endsWith(".ico") &&
+               !path.endsWith(".png") &&
+               !path.endsWith(".jpg") &&
+               !path.endsWith(".svg") &&
+               !path.endsWith(".woff") &&
+               !path.endsWith(".woff2") &&
+               !path.contains("/resources/");
     }
 }

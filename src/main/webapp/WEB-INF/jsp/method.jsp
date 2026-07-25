@@ -110,10 +110,23 @@
   </aside></div>
 
 <script>
+function safeContinueUrl(target) {
+    if (!target || target === '/success') return 'http://localhost:4200/whoami';
+    try {
+        const url = new URL(target, window.location.origin);
+        if (url.protocol === 'http:' || url.protocol === 'https:') {
+            return url.href;
+        }
+        return url.pathname + url.search + url.hash;
+    } catch (err) {
+        return target || 'http://localhost:4200/whoami';
+    }
+}
+
 const params = new URLSearchParams(location.search);
 const identifier = params.get('identifier') || params.get('phone') || '';
 const phone = params.get('phone') || identifier;
-const continueUrl = params.get('continue') || '/success';
+const continueUrl = safeContinueUrl(params.get('continue') || params.get('next'));
 
 document.getElementById('phone-display').textContent = phone;
 document.getElementById('phone-hidden').value = phone;

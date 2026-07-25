@@ -25,7 +25,18 @@ import org.springframework.security.oauth2.core.oidc.endpoint.OidcParameterNames
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 
+import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.RSAKey;
+import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
+import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.proc.SecurityContext;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
+import java.util.UUID;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
+import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
@@ -82,6 +93,7 @@ public class SecurityConfig {
                                 "/method",
                                 "/otp",
                                 "/password-change",
+                                "/forgot-password",
                                 "/success",
                                 "/api/auth/register",
                                 "/api/auth/login",
@@ -91,6 +103,7 @@ public class SecurityConfig {
                                 "/api/auth/verify-2fa",
                                 "/api/auth/otp/verify",
                                 "/api/auth/password/change-expired",
+                                "/api/auth/password/reset",
                                 "/resources/**",
                                 "/css/**",
                                 "/js/**",
@@ -167,9 +180,14 @@ public class SecurityConfig {
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .redirectUri("http://localhost/login/oauth2/code/keycloak")
+                .redirectUri("http://localhost:4200/login/oauth2/code/keycloak")
+                .redirectUri("http://localhost:4200/whoami")
+                .redirectUri("http://localhost:4200/home")
+                .redirectUri("http://localhost:4200")
                 .scope("openid")
                 .scope("profile")
                 .scope("email")
+                .clientSettings(ClientSettings.builder().requireProofKey(false).requireAuthorizationConsent(false).build())
                 .build();
 
         return new InMemoryRegisteredClientRepository(defaultClient, asanakClient);
@@ -182,18 +200,36 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecretKey jwtSecretKey(@Value("${app.jwt.secret:01234567890123456789012345678901}") String secret) {
-        return new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+    public KeyPair keyPair() {
+        try {
+            KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
+            keyPairGenerator.initialize(2048);
+            return keyPairGenerator.generateKeyPair();
+        } catch (Exception ex) {
+            throw new IllegalStateException("Failed to generate RSA key pair", ex);
+        }
     }
 
     @Bean
-    public JwtEncoder jwtEncoder(SecretKey jwtSecretKey) {
-        return new NimbusJwtEncoder(new ImmutableSecret<>(jwtSecretKey));
+    public JWKSource<SecurityContext> jwkSource(KeyPair keyPair) {
+        RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
+        RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
+        RSAKey rsaKey = new RSAKey.Builder(publicKey)
+                .privateKey(privateKey)
+                .keyID(UUID.randomUUID().toString())
+                .build();
+        JWKSet jwkSet = new JWKSet(rsaKey);
+        return new ImmutableJWKSet<>(jwkSet);
     }
 
     @Bean
-    public JwtDecoder jwtDecoder(SecretKey jwtSecretKey) {
-        return NimbusJwtDecoder.withSecretKey(jwtSecretKey).build();
+    public JwtEncoder jwtEncoder(JWKSource<SecurityContext> jwkSource) {
+        return new NimbusJwtEncoder(jwkSource);
+    }
+
+    @Bean
+    public JwtDecoder jwtDecoder(KeyPair keyPair) {
+        return NimbusJwtDecoder.withPublicKey((RSAPublicKey) keyPair.getPublic()).build();
     }
 
     @Bean

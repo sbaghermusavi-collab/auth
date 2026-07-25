@@ -21,11 +21,11 @@
     </div>
     <div class="form-center">
       <div class="form-card">
-        <h1 class="scr-title">رمز عبور شما منقضی شده است</h1>
-        <p class="scr-sub">لطفاً یک رمز عبور جدید تعیین کنید.</p>
+        <h1 class="scr-title" id="page-title">رمز عبور شما منقضی شده است</h1>
+        <p class="scr-sub" id="page-sub">لطفاً یک رمز عبور جدید تعیین کنید.</p>
 
         <form id="pw-form">
-          <div class="fld">
+          <div class="fld" id="current-pw-group">
             <label class="field-label">رمز عبور فعلی</label>
             <div class="fld-wrap">
               <input class="fld-input" id="f-current" type="password" autocomplete="current-password" required>
@@ -50,7 +50,19 @@
 <script>
 const params = new URLSearchParams(location.search);
 const identifier = params.get('identifier') || params.get('phone') || '';
-const continueUrl = params.get('continue') || '/success';
+const continueUrl = params.get('continue') || 'http://localhost:4200/whoami';
+const isReset = params.get('reset') === 'true' || params.get('mode') === 'reset';
+
+if (isReset) {
+    const titleEl = document.getElementById('page-title');
+    if (titleEl) titleEl.textContent = 'تعیین رمز عبور جدید';
+    const subEl = document.getElementById('page-sub');
+    if (subEl) subEl.textContent = 'لطفاً رمز عبور جدید خود را وارد کنید.';
+    const currentGroup = document.getElementById('current-pw-group');
+    if (currentGroup) currentGroup.style.display = 'none';
+    const currentInput = document.getElementById('f-current');
+    if (currentInput) currentInput.removeAttribute('required');
+}
 
 function storeTokens(data) {
     if (data.accessToken) localStorage.setItem('accessToken', data.accessToken);
@@ -59,11 +71,15 @@ function storeTokens(data) {
 }
 
 function safeContinueUrl(target) {
+    if (!target || target === '/success') return 'http://localhost:4200/whoami';
     try {
         const url = new URL(target, window.location.origin);
-        return url.origin === window.location.origin ? url.pathname + url.search + url.hash : '/success';
+        if (url.protocol === 'http:' || url.protocol === 'https:') {
+            return url.href;
+        }
+        return url.pathname + url.search + url.hash;
     } catch (err) {
-        return '/success';
+        return target || 'http://localhost:4200/whoami';
     }
 }
 
@@ -84,14 +100,20 @@ document.getElementById('pw-form').addEventListener('submit', async (e) => {
     submitBtn.disabled = true;
 
     try {
-        const res = await fetch('/api/auth/password/change-expired', {
+        const endpoint = isReset ? '/api/auth/password/reset' : '/api/auth/password/change-expired';
+        const payload = isReset ? {
+            identifier,
+            newPassword: document.getElementById('f-new').value
+        } : {
+            identifier,
+            currentPassword: document.getElementById('f-current').value,
+            newPassword: document.getElementById('f-new').value
+        };
+
+        const res = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                identifier,
-                currentPassword: document.getElementById('f-current').value,
-                newPassword: document.getElementById('f-new').value
-            })
+            body: JSON.stringify(payload)
         });
 
         if (!res.ok) {

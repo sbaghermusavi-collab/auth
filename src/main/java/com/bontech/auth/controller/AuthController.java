@@ -159,6 +159,20 @@ public class AuthController {
         return authService.changeExpiredPassword(request, httpRequest, httpResponse);
     }
 
+    @PostMapping(value = "/password/reset", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public AuthDto.TokenResponse resetPasswordJson(@Valid @RequestBody AuthDto.ResetPasswordRequest request,
+                                                    HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+        return authService.resetPassword(request, httpRequest, httpResponse);
+    }
+
+    @PostMapping(value = "/password/reset", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+    public AuthDto.TokenResponse resetPasswordForm(HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+        String identifier = httpRequest.getParameter("identifier");
+        String newPassword = httpRequest.getParameter("newPassword");
+        AuthDto.ResetPasswordRequest request = new AuthDto.ResetPasswordRequest(identifier, newPassword);
+        return authService.resetPassword(request, httpRequest, httpResponse);
+    }
+
     @PostMapping(value = "/impersonate", consumes = MediaType.APPLICATION_JSON_VALUE)
     public AuthDto.TokenResponse impersonateJson(@Valid @RequestBody AuthDto.ImpersonateRequest request) {
         return authService.impersonate(request);

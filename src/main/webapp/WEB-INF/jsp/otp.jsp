@@ -119,20 +119,55 @@
 const params = new URLSearchParams(location.search);
 const identifier = params.get('identifier') || params.get('phone') || '';
 const phone = params.get('phone') || identifier;
-const continueUrl = params.get('continue') || '/success';
 
 document.getElementById('phone-show').textContent = phone;
 document.getElementById('phone-hidden').value = phone;
 document.getElementById('identifier-hidden').value = identifier;
-
 function safeContinueUrl(target) {
+    if (!target || target === '/success') return 'http://localhost:4200/whoami';
     try {
         const url = new URL(target, window.location.origin);
-        return url.origin === window.location.origin ? url.pathname + url.search + url.hash : '/success';
+        if (url.protocol === 'http:' || url.protocol === 'https:') {
+            return url.href;
+        }
+        return url.pathname + url.search + url.hash;
     } catch (err) {
-        return '/success';
+        return target || 'http://localhost:4200/whoami';
     }
 }
+
+const continueUrl = safeContinueUrl(params.get('continue') || params.get('next'));
+
+const cells = Array.from(document.querySelectorAll('.otp-cell'));
+cells.forEach((cell, idx) => {
+    cell.addEventListener('input', (e) => {
+        const val = e.target.value;
+        if (val.length === 1 && idx < cells.length - 1) {
+            cells[idx + 1].focus();
+        }
+    });
+
+    cell.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && !cell.value && idx > 0) {
+            cells[idx - 1].focus();
+        }
+    });
+
+    cell.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const pasteData = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
+        if (!pasteData) return;
+        for (let i = 0; i < cells.length; i++) {
+            if (i < pasteData.length) {
+                cells[i].value = pasteData[i];
+            }
+        }
+        const focusIdx = Math.min(pasteData.length, cells.length) - 1;
+        if (focusIdx >= 0) {
+            cells[focusIdx].focus();
+        }
+    });
+});
 
 function storeTokens(data) {
     if (data.accessToken) localStorage.setItem('accessToken', data.accessToken);
@@ -229,13 +264,12 @@ document.querySelector('form').addEventListener('submit', async (e) => {
 
         if (res.ok) {
             const data = await res.json();
-            if (data.accessToken === 'PASSWORD_CHANGE_REQUIRED') {
-                const pwParams = new URLSearchParams({ identifier, continue: continueUrl });
-                window.location.href = '/password-change?' + pwParams.toString();
+            if (data.accessToken === 'PASSWORD_CHANGE_REQUIRED' || (continueUrl && continueUrl.includes('/password-change'))) {
+                window.location.href = safeContinueUrl(continueUrl.includes('/password-change') ? continueUrl : '/password-change?identifier=' + encodeURIComponent(identifier));
                 return;
             }
             storeTokens(data);
-            window.location.href = data.redirectUrl || safeContinueUrl(continueUrl);
+            window.location.href = (continueUrl && continueUrl !== '/success') ? safeContinueUrl(continueUrl) : (data.redirectUrl || 'http://localhost:4200/whoami');
         } else {
             errorEl.textContent = await readError(res);
             errorEl.style.display = 'block';

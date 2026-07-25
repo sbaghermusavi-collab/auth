@@ -46,4 +46,9 @@ public final class AuthDto {
             @NotBlank String currentPassword,
             @NotBlank @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d).{8,}$", message = "Password must have letters and numbers and min length 8") String newPassword
     ) {}
+
+    public record ResetPasswordRequest(
+            @NotBlank String identifier,
+            @NotBlank @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d).{8,}$", message = "Password must have letters and numbers and min length 8") String newPassword
+    ) {}
 }

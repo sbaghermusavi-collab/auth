@@ -1,6 +1,9 @@
 spring:
+  output:
+    ansi:
+      enabled: ALWAYS
   datasource:
-    url: jdbc:mysql://localhost:3307/auth
+    url: jdbc:mysql://192.168.100.123:3309/auth
     username: root
     password: rootpassword
     driverClassName: com.mysql.cj.jdbc.Driver
@@ -21,9 +24,12 @@ spring:
       prefix: /WEB-INF/jsp/
       suffix: .jsp
 
-logging :
+logging:
   level:
-    liquibase : INFO
+    root: INFO
+    com.bontech.auth: DEBUG
+    com.zaxxer.hikari: WARN
+    liquibase: INFO
 app:
   jwt:
     secret: "01234567890123456789012345678901"

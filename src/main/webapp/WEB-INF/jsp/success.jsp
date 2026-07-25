@@ -89,5 +89,5 @@
   </aside></div>
 
 </body>
-<script src="app.js"></script>
+<script src="/resources/js/app.js"></script>
 </html>

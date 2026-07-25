@@ -79,7 +79,7 @@
             <div class="fld" id="password-field" <% if (!Boolean.TRUE.equals(request.getAttribute("passwordEnabled"))) { %>style="display:none;"<% } %>>
               <div class="fld-row">
                 <label class="field-label">رمز عبور</label
-                ><button type="button" class="fld-link">
+                ><button type="button" class="fld-link" id="forgot-pw-btn" onclick="handleForgotPassword(event)">
                   فراموشی رمز عبور؟
                 </button>
               </div>
@@ -108,6 +108,8 @@
                   type="button"
                   class="fld-toggle"
                   data-act="pw-toggle"
+                  id="pw-toggle-btn"
+                  onclick="togglePasswordVisibility()"
                   aria-label="نمایش رمز"
                 >
                   <svg
@@ -477,32 +479,63 @@ async function loadCaptcha() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    loadCaptcha();
-    const refreshBtn = document.querySelector('[data-act="cap-refresh"]');
-    if (refreshBtn) {
-        refreshBtn.addEventListener('click', loadCaptcha);
+function safeContinueUrl(target) {
+    if (!target || target === '/success') return 'http://localhost:4200/whoami';
+    try {
+        const url = new URL(target, window.location.origin);
+        if (url.protocol === 'http:' || url.protocol === 'https:') {
+            return url.href;
+        }
+        return url.pathname + url.search + url.hash;
+    } catch (err) {
+        return target || 'http://localhost:4200/whoami';
     }
-});
-
-
-document.getElementById('otp-login').addEventListener('click', (e) => {
-    e.preventDefault();
-    document.getElementById('password-field').style.display = 'none';
-    document.getElementById('primary').click();
-});
+}
 
 function getContinueUrl() {
     const params = new URLSearchParams(window.location.search);
     const target = params.get('continue') || params.get('next');
-    if (!target) return '/success';
-    try {
-        const url = new URL(target, window.location.origin);
-        return url.origin === window.location.origin ? url.pathname + url.search + url.hash : '/success';
-    } catch (err) {
-        return '/success';
+    return safeContinueUrl(target);
+}
+
+function togglePasswordVisibility() {
+    const pw = document.getElementById('f-pw');
+    if (pw) {
+        pw.type = pw.type === 'password' ? 'text' : 'password';
     }
 }
+
+function handleForgotPassword(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const currentContinue = getContinueUrl();
+    const targetUrl = '/forgot-password' + (currentContinue && currentContinue !== '/success' ? '?continue=' + encodeURIComponent(currentContinue) : '');
+    window.location.href = targetUrl;
+}
+
+function initPage() {
+    loadCaptcha();
+    const refreshBtn = document.querySelector('[data-act="cap-refresh"]');
+    if (refreshBtn) {
+        refreshBtn.onclick = loadCaptcha;
+    }
+    const continueUrl = getContinueUrl();
+    const registerLink = document.querySelector('a[href="/register"]');
+    if (registerLink && continueUrl && continueUrl !== '/success') {
+        registerLink.href = '/register?continue=' + encodeURIComponent(continueUrl);
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPage);
+} else {
+    initPage();
+}
+
+document.getElementById('otp-login')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('password-field').style.display = 'none';
+    document.getElementById('primary').click();
+});
 
 function storeTokens(data) {
     if (data.accessToken) localStorage.setItem('accessToken', data.accessToken);

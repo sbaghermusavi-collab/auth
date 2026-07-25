@@ -17,7 +17,7 @@ public class ViewController {
     public String index(Model model) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
-            return "redirect:/success";
+            return "redirect:http://localhost:4200/whoami";
         }
         addConfig(model);
         return "login";
@@ -27,7 +27,7 @@ public class ViewController {
     public String endpoints(Model model) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
-            return "redirect:/success";
+            return "redirect:http://localhost:4200/whoami";
         }
         addConfig(model);
         return "login";
@@ -37,7 +37,7 @@ public class ViewController {
     public String login(Model model) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
-            return "redirect:/success";
+            return "redirect:http://localhost:4200/whoami";
         }
         addConfig(model);
         return "login";
@@ -71,6 +71,12 @@ public class ViewController {
     public String passwordChange(Model model) {
         addConfig(model);
         return "password-change";
+    }
+
+    @GetMapping("/forgot-password")
+    public String forgotPassword(Model model) {
+        addConfig(model);
+        return "forgot-password";
     }
 
     @GetMapping("/success")

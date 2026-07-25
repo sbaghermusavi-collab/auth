@@ -47,7 +47,8 @@ public class JwtService {
                 .claim("actor", actor == null ? user.getUsername() : actor)
                 .build();
 
-        return jwtEncoder.encode(JwtEncoderParameters.from(JwsHeader.with(() -> "HS256").build(), claims)).getTokenValue();
+        JwsHeader header = JwsHeader.with(org.springframework.security.oauth2.jose.jws.SignatureAlgorithm.RS256).build();
+        return jwtEncoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
     }
 
     public String generateRefreshToken(UserAccount user) {
@@ -62,7 +63,8 @@ public class JwtService {
                 .claim("type", "refresh")
                 .build();
 
-        return jwtEncoder.encode(JwtEncoderParameters.from(JwsHeader.with(() -> "HS256").build(), claims)).getTokenValue();
+        JwsHeader header = JwsHeader.with(org.springframework.security.oauth2.jose.jws.SignatureAlgorithm.RS256).build();
+        return jwtEncoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
     }
 
     public long getExpirationSeconds() {
