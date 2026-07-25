@@ -3,7 +3,7 @@ spring:
     ansi:
       enabled: ALWAYS
   datasource:
-    url: jdbc:mysql://192.168.100.123:3309/auth
+    url: jdbc:mysql://localhost:3307/auth
     username: root
     password: rootpassword
     driverClassName: com.mysql.cj.jdbc.Driver

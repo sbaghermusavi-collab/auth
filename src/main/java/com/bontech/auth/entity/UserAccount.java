@@ -28,7 +28,7 @@ public class UserAccount extends AuditableEntity {
     @Column(nullable = false)
     private String passwordHash;
 
-    @Column(nullable = false)
+    @Column(name = "\"system_user\"", nullable = false)
     private boolean systemUser;
 
     @Column(nullable = false)
@@ -40,6 +40,13 @@ public class UserAccount extends AuditableEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tenant_id", foreignKey = @ForeignKey(name = "fk_user_tenant"), insertable = false, updatable = false)
     private Tenant tenant;
+
+    @Column(name = "parent_user_id")
+    private Long parentUserId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_user_id", foreignKey = @ForeignKey(name = "fk_user_parent_user"), insertable = false, updatable = false)
+    private UserAccount parentUser;
 
     @ManyToMany
     @JoinTable(name = "user_roles",

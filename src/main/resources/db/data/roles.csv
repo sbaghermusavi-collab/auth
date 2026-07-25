@@ -10,3 +10,4 @@ id,code,tenant_id,created_at,updated_at,created_by,updated_by,version
 9,RP_CUSTOMER,1,2026-01-01T00:00:00,2026-01-01T00:00:00,liquibase,liquibase,0
 10,SUPER_ADMIN,1,2026-01-01T00:00:00,2026-01-01T00:00:00,liquibase,liquibase,0
 11,default-roles-milky-way,1,2026-01-01T00:00:00,2026-01-01T00:00:00,liquibase,liquibase,0
+12,SYS_ADMIN,1,2026-01-01T00:00:00,2026-01-01T00:00:00,liquibase,liquibase,0

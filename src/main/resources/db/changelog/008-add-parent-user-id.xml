@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog logicalFilePath="db/changelog/008-add-parent-user-id.yaml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+  <changeSet id="008-add-parent-user-id" author="auth-app">
+    <addColumn tableName="users">
+      <column name="parent_user_id" type="BIGINT"/>
+    </addColumn>
+    <addForeignKeyConstraint baseTableName="users" baseColumnNames="parent_user_id" referencedTableName="users" referencedColumnNames="id" constraintName="fk_user_parent_user"/>
+  </changeSet>
+</databaseChangeLog>

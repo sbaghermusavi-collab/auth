@@ -6,4 +6,5 @@
   <include file="db/changelog/005-seed-someuser.xml"/>
   <include file="db/changelog/006-add-tenant-id.xml"/>
   <include file="db/changelog/007-seed-all-roles-permissions.xml"/>
+  <include file="db/changelog/008-add-parent-user-id.xml"/>
 </databaseChangeLog>

@@ -15,4 +15,6 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, Long> 
     List<UserAccount> findByRoles_CodeAndTenantId(String roleCode, Long tenantId);
     List<UserAccount> findByRoles_Permissions_Code(String permissionCode);
     List<UserAccount> findByRoles_Permissions_CodeAndTenantId(String permissionCode, Long tenantId);
+    List<UserAccount> findByTenantId(Long tenantId);
+    List<UserAccount> findByParentUserId(Long parentUserId);
 }
