@@ -15,6 +15,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import com.bontech.auth.security.CustomPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -26,7 +27,7 @@ public class RegistrationService {
     private final UserPhoneNumberRepository phoneRepository;
     private final RoleRepository roleRepository;
     private final PasswordHistoryRepository passwordHistoryRepository;
-    private final PasswordEncoder encoder;
+    private final CustomPasswordEncoder encoder;
 
     @Transactional
     public UserAccount register(AuthDto.RegistrationRequest request) {
@@ -48,7 +49,7 @@ public class RegistrationService {
 
         UserAccount user = new UserAccount();
         user.setUsername(request.username());
-        user.setPasswordHash(encoder.encode(request.password()));
+        user.setPasswordHash(encoder.encode(request.username(), request.password()));
         user.setTenantId(tenant.getId());
         user.setSystemUser(request.systemUser());
         user.setPasswordExpiresAt(Instant.now().plus(90, ChronoUnit.DAYS));

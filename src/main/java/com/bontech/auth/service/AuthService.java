@@ -20,11 +20,11 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.security.SecureRandom;
+import com.bontech.auth.security.CustomPasswordEncoder;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
-import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
@@ -35,7 +35,7 @@ public class AuthService {
     private final UserSessionRepository sessionRepository;
     private final PasswordHistoryRepository passwordHistoryRepository;
     private final UserAccountRepository userAccountRepository;
-    private final PasswordEncoder encoder;
+    private final CustomPasswordEncoder encoder;
     private final CaptchaService captchaService;
     private final SmsService smsService;
     private final JwtService jwtService;
@@ -59,7 +59,7 @@ public class AuthService {
         UserAccount user = findUserByIdentifier(request.identifier());
 
         if (properties.getAuth().isPasswordEnabled()) {
-            if (request.password() == null || !encoder.matches(request.password(), user.getPasswordHash())) {
+            if (request.password() == null || request.password().isBlank() || !encoder.matches(user.getUsername(), request.password(), user.getPasswordHash())) {
                 throw new IllegalArgumentException("Invalid username or password");
             }
         }
@@ -206,17 +206,17 @@ public class AuthService {
                                                          HttpServletResponse httpResponse) {
         UserAccount user = findUserByIdentifier(request.identifier());
 
-        if (!encoder.matches(request.currentPassword(), user.getPasswordHash())) {
+        if (!encoder.matches(user.getUsername(), request.currentPassword(), user.getPasswordHash())) {
             throw new IllegalArgumentException("Current password is invalid");
         }
 
         List<PasswordHistory> last3 = passwordHistoryRepository.findTop3ByUser_UsernameOrderByCreatedAtDesc(user.getUsername());
-        boolean reused = last3.stream().anyMatch(p -> encoder.matches(request.newPassword(), p.getPasswordHash()));
+        boolean reused = last3.stream().anyMatch(p -> encoder.matches(user.getUsername(), request.newPassword(), p.getPasswordHash()));
         if (reused) {
             throw new IllegalArgumentException("New password cannot match last 3 passwords");
         }
 
-        String newHash = encoder.encode(request.newPassword());
+        String newHash = encoder.encode(user.getUsername(), request.newPassword());
         user.setPasswordHash(newHash);
         user.setPasswordChangeRequired(false);
         user.setPasswordExpiresAt(Instant.now().plus(90, ChronoUnit.DAYS));
@@ -245,12 +245,12 @@ public class AuthService {
         UserAccount user = findUserByIdentifier(request.identifier());
 
         List<PasswordHistory> last3 = passwordHistoryRepository.findTop3ByUser_UsernameOrderByCreatedAtDesc(user.getUsername());
-        boolean reused = last3.stream().anyMatch(p -> encoder.matches(request.newPassword(), p.getPasswordHash()));
+        boolean reused = last3.stream().anyMatch(p -> encoder.matches(user.getUsername(), request.newPassword(), p.getPasswordHash()));
         if (reused) {
             throw new IllegalArgumentException("New password cannot match last 3 passwords");
         }
 
-        String newHash = encoder.encode(request.newPassword());
+        String newHash = encoder.encode(user.getUsername(), request.newPassword());
         user.setPasswordHash(newHash);
         user.setPasswordChangeRequired(false);
         user.setPasswordExpiresAt(Instant.now().plus(90, ChronoUnit.DAYS));
@@ -274,10 +274,13 @@ public class AuthService {
 
 
     private UserAccount findUserByIdentifier(String identifier) {
+        if (identifier == null || identifier.isBlank()) {
+            throw new IllegalArgumentException("Invalid username or password");
+        }
         return userAccountRepository.findByUsername(identifier)
                 .orElseGet(() -> phoneRepository.findByPhoneNumber(identifier)
                         .map(UserPhoneNumber::getUser)
-                        .orElseThrow(() -> new IllegalArgumentException("User not found")));
+                        .orElseThrow(() -> new IllegalArgumentException("Invalid username or password")));
     }
 
     private String mask(String phone) {

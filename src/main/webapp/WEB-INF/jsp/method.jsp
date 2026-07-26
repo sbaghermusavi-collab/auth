@@ -125,6 +125,9 @@ function safeContinueUrl(target) {
 
 const params = new URLSearchParams(location.search);
 const identifier = params.get('identifier') || params.get('phone') || '';
+if (!identifier) {
+    window.location.href = '/login';
+}
 const phone = params.get('phone') || identifier;
 const continueUrl = safeContinueUrl(params.get('continue') || params.get('next'));
 

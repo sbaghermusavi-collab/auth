@@ -28,6 +28,7 @@ logging:
   level:
     root: INFO
     com.bontech.auth: DEBUG
+    org.springframework.security: DEBUG
     com.zaxxer.hikari: WARN
     liquibase: INFO
 app:

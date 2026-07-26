@@ -42,7 +42,7 @@ class AuthServiceOtpTest {
     @Mock
     private UserAccountRepository userAccountRepository;
     @Mock
-    private PasswordEncoder encoder;
+    private com.bontech.auth.security.CustomPasswordEncoder encoder;
     @Mock
     private CaptchaService captchaService;
     @Mock
@@ -91,7 +91,7 @@ class AuthServiceOtpTest {
 
         when(properties.getAuth()).thenReturn(authProperties);
         when(userAccountRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
-        when(encoder.matches("raw_pw", "hashed_pw")).thenReturn(true);
+        when(encoder.matches("testuser", "raw_pw", "hashed_pw")).thenReturn(true);
         when(phoneRepository.findByUser_Username("testuser")).thenReturn(List.of(phone));
 
         AuthDto.LoginStartResponse response = authService.loginStepOne(request, null, null);

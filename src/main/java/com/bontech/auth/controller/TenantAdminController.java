@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import com.bontech.auth.security.CustomPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,7 +23,7 @@ import org.springframework.web.bind.annotation.*;
 public class TenantAdminController {
     private final UserAccountRepository userAccountRepository;
     private final RoleRepository roleRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final CustomPasswordEncoder passwordEncoder;
 
     @PostMapping
     public TenantAdminDto.UserResponse create(@RequestHeader("X-Actor-Role") String actorRole,
@@ -33,7 +34,7 @@ public class TenantAdminController {
 
         UserAccount user = UserAccount.builder()
                 .username(request.username())
-                .passwordHash(passwordEncoder.encode(request.password()))
+                .passwordHash(passwordEncoder.encode(request.username(), request.password()))
                 .tenantId(request.tenantId())
                 .systemUser(request.systemUser())
                 .passwordExpiresAt(Instant.now().plus(90, ChronoUnit.DAYS))

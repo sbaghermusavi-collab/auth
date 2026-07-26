@@ -8,8 +8,13 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.RequestParam;
+
 @Controller
 @RequiredArgsConstructor
+@Slf4j
 public class ViewController {
     private final AppProperties properties;
 
@@ -34,7 +39,20 @@ public class ViewController {
     }
 
     @GetMapping("/login")
-    public String login(Model model) {
+    public String login(@RequestParam(value = "error", required = false) String error,
+                        @RequestParam(value = "logout", required = false) String logout,
+                        Model model,
+                        HttpServletRequest request) {
+        if (error != null) {
+            Object lastException = request.getSession(false) != null
+                    ? request.getSession(false).getAttribute("SPRING_SECURITY_LAST_EXCEPTION")
+                    : null;
+            log.error("[LOGIN ERROR REDIRECT] Client redirected to /login?error | Session exception: {}",
+                    lastException != null ? lastException : "Unknown/bad credentials failure");
+        }
+        if (logout != null) {
+            log.info("[LOGOUT SUCCESS REDIRECT] Client redirected to /login?logout");
+        }
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
             return "redirect:http://localhost:4200/whoami";

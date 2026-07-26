@@ -118,6 +118,9 @@
 <script>
 const params = new URLSearchParams(location.search);
 const identifier = params.get('identifier') || params.get('phone') || '';
+if (!identifier) {
+    window.location.href = '/login';
+}
 const phone = params.get('phone') || identifier;
 
 document.getElementById('phone-show').textContent = phone;

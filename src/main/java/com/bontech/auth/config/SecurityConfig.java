@@ -1,16 +1,21 @@
 package com.bontech.auth.config;
 
+import com.bontech.auth.security.CustomPasswordEncoder;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.OAuth2AuthorizationServerConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.DelegatingPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
@@ -34,6 +39,8 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
@@ -55,8 +62,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.stream.Collectors;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Configuration
 @EnableWebSecurity
+@Slf4j
 public class SecurityConfig {
 
     @Bean
@@ -74,6 +84,11 @@ public class SecurityConfig {
                 .oauth2ResourceServer(resourceServer -> resourceServer.jwt(Customizer.withDefaults()))
                 .formLogin(form -> form
                         .loginPage("/login")
+                        .failureHandler((request, response, exception) -> {
+                            log.error("[AUTH SERVER FORM LOGIN FAILED] URI: {} | Exception: {} - Redirecting to /login?error",
+                                    request.getRequestURI(), exception.getMessage(), exception);
+                            response.sendRedirect("/login?error");
+                        })
                         .permitAll());
 
         return http.build();
@@ -114,6 +129,11 @@ public class SecurityConfig {
                 )
                 .formLogin(form -> form
                         .loginPage("/login")
+                        .failureHandler((request, response, exception) -> {
+                            log.error("[APP FORM LOGIN FAILED] URI: {} | Exception: {} - Redirecting to /login?error",
+                                    request.getRequestURI(), exception.getMessage(), exception);
+                            response.sendRedirect("/login?error");
+                        })
                         .permitAll())
                 .logout(logout -> logout
                         .logoutSuccessUrl("/login?logout")
@@ -155,18 +175,58 @@ public class SecurityConfig {
                     .build();
         };
     }
+    @Bean
+    @Primary
+    public PasswordEncoder passwordEncoder(CustomPasswordEncoder customPasswordEncoder) {
+        String defaultId = "bcrypt";
+
+        Map<String, PasswordEncoder> encoders = new HashMap<>();
+        encoders.put("bcrypt", new BCryptPasswordEncoder());
+        // your "other" encoder for legacy/user-password accounts
+        encoders.put("legacy", customPasswordEncoder);
+
+        DelegatingPasswordEncoder delegatingEncoder =
+                new DelegatingPasswordEncoder(defaultId, encoders);
+
+        // encoder used when a stored hash has NO {id} prefix at all
+        delegatingEncoder.setDefaultPasswordEncoderForMatches(customPasswordEncoder);
+
+        return new PasswordEncoder() {
+            @Override
+            public String encode(CharSequence rawPassword) {
+                return delegatingEncoder.encode(rawPassword);
+            }
+
+            @Override
+            public boolean matches(CharSequence rawPassword, String encodedPassword) {
+                if (rawPassword == null || encodedPassword == null) {
+                    return false;
+                }
+                String raw = rawPassword.toString();
+                if (raw.startsWith("{") && raw.contains("}")) {
+                    raw = raw.substring(raw.indexOf("}") + 1);
+                }
+                return delegatingEncoder.matches(raw, encodedPassword);
+            }
+        };
+    }
+
+
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+    public AuthenticationProvider authenticationProvider(UserDetailsService userDetailsService, PasswordEncoder passwordEncoder) {
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider(userDetailsService);
+        authProvider.setPasswordEncoder(passwordEncoder);
+        return authProvider;
     }
 
     @Bean
-    public RegisteredClientRepository registeredClientRepository(PasswordEncoder passwordEncoder) {
+    public RegisteredClientRepository registeredClientRepository(PasswordEncoder clientPasswordEncoder) {
         RegisteredClient defaultClient = RegisteredClient.withId("client-id-1")
                 .clientId("auth-client")
-                .clientSecret(passwordEncoder.encode("auth-secret"))
+                .clientSecret(clientPasswordEncoder.encode("auth-secret"))
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
                 //.authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)  // usually not for client_credentials
                 .scope("user.read")
@@ -175,8 +235,9 @@ public class SecurityConfig {
 
         RegisteredClient asanakClient = RegisteredClient.withId("asanak-client")
                 .clientId("asanak")
-                .clientSecret(passwordEncoder.encode(System.getenv().getOrDefault("ASANAK_CLIENT_SECRET", "FoHnEjcMn0ivnr0CV384qicgcEIPuTB4")))
+                .clientSecret(clientPasswordEncoder.encode(System.getenv().getOrDefault("ASANAK_CLIENT_SECRET", "FoHnEjcMn0ivnr0CV384qicgcEIPuTB4")))
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .redirectUri("http://localhost/login/oauth2/code/keycloak")

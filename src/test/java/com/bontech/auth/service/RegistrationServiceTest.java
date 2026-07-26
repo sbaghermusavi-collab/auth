@@ -37,7 +37,7 @@ class RegistrationServiceTest {
     @Mock
     private PasswordHistoryRepository passwordHistoryRepository;
     @Mock
-    private PasswordEncoder encoder;
+    private com.bontech.auth.security.CustomPasswordEncoder encoder;
 
     @InjectMocks
     private RegistrationService registrationService;
@@ -61,7 +61,7 @@ class RegistrationServiceTest {
         );
 
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.empty());
-        when(encoder.encode("Password123")).thenReturn("encodedPassword");
+        when(encoder.encode("testuser", "Password123")).thenReturn("encodedPassword");
         when(tenantRepository.findByCode("default")).thenReturn(Optional.empty());
 
         com.bontech.auth.entity.Tenant tenant = new com.bontech.auth.entity.Tenant();
