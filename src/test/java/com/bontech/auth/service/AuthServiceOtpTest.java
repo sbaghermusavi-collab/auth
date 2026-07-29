@@ -137,4 +137,81 @@ class AuthServiceOtpTest {
         assertEquals("mock_token", response.accessToken());
         verify(otpService, times(1)).verifyChallenge(testUser, "999999");
     }
+
+    @Test
+    @DisplayName("Should allow impersonation when actor is TenantAdmin with ADMIN role in same tenant")
+    void testImpersonateSuccess() {
+        com.bontech.auth.entity.Role adminRole = new com.bontech.auth.entity.Role();
+        adminRole.setCode("ADMIN");
+
+        UserAccount adminActor = new UserAccount();
+        adminActor.setId(1L);
+        adminActor.setUsername("adminuser");
+        adminActor.setTenantId(100L);
+        adminActor.setRoles(java.util.Set.of(adminRole));
+
+        UserAccount targetUser = new UserAccount();
+        targetUser.setId(2L);
+        targetUser.setUsername("targetuser");
+        targetUser.setTenantId(100L);
+
+        when(userAccountRepository.findByUsername("adminuser")).thenReturn(Optional.of(adminActor));
+        when(userAccountRepository.findByUsername("targetuser")).thenReturn(Optional.of(targetUser));
+        when(jwtService.generate(eq(targetUser), eq("adminuser"))).thenReturn("impersonated_token");
+        when(jwtService.generateRefreshToken(eq(targetUser))).thenReturn("impersonated_refresh");
+
+        AuthDto.ImpersonateRequest request = new AuthDto.ImpersonateRequest("adminuser", "targetuser");
+        AuthDto.TokenResponse response = authService.impersonate(request);
+
+        assertNotNull(response);
+        assertEquals("impersonated_token", response.accessToken());
+    }
+
+    @Test
+    @DisplayName("Should reject impersonation when actor does not have ADMIN role")
+    void testImpersonateFailsNonAdmin() {
+        com.bontech.auth.entity.Role userRole = new com.bontech.auth.entity.Role();
+        userRole.setCode("USER");
+
+        UserAccount regularActor = new UserAccount();
+        regularActor.setId(1L);
+        regularActor.setUsername("regularuser");
+        regularActor.setTenantId(100L);
+        regularActor.setRoles(java.util.Set.of(userRole));
+
+        UserAccount targetUser = new UserAccount();
+        targetUser.setId(2L);
+        targetUser.setUsername("targetuser");
+        targetUser.setTenantId(100L);
+
+        when(userAccountRepository.findByUsername("regularuser")).thenReturn(Optional.of(regularActor));
+        when(userAccountRepository.findByUsername("targetuser")).thenReturn(Optional.of(targetUser));
+
+        AuthDto.ImpersonateRequest request = new AuthDto.ImpersonateRequest("regularuser", "targetuser");
+        assertThrows(IllegalArgumentException.class, () -> authService.impersonate(request));
+    }
+
+    @Test
+    @DisplayName("Should reject impersonation when target user belongs to a different tenant")
+    void testImpersonateFailsDifferentTenant() {
+        com.bontech.auth.entity.Role adminRole = new com.bontech.auth.entity.Role();
+        adminRole.setCode("ADMIN");
+
+        UserAccount adminActor = new UserAccount();
+        adminActor.setId(1L);
+        adminActor.setUsername("adminuser");
+        adminActor.setTenantId(100L);
+        adminActor.setRoles(java.util.Set.of(adminRole));
+
+        UserAccount otherTenantTarget = new UserAccount();
+        otherTenantTarget.setId(2L);
+        otherTenantTarget.setUsername("othertarget");
+        otherTenantTarget.setTenantId(200L);
+
+        when(userAccountRepository.findByUsername("adminuser")).thenReturn(Optional.of(adminActor));
+        when(userAccountRepository.findByUsername("othertarget")).thenReturn(Optional.of(otherTenantTarget));
+
+        AuthDto.ImpersonateRequest request = new AuthDto.ImpersonateRequest("adminuser", "othertarget");
+        assertThrows(IllegalArgumentException.class, () -> authService.impersonate(request));
+    }
 }

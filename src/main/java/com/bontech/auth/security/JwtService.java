@@ -1,6 +1,8 @@
 package com.bontech.auth.security;
 
 import com.bontech.auth.entity.UserAccount;
+import com.bontech.auth.entity.Permission;
+import com.bontech.auth.entity.Role;
 import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
@@ -32,7 +34,19 @@ public class JwtService {
 
     public String generate(UserAccount user, String actor) {
         Instant now = Instant.now();
-        Set<String> roles = user.getRoles().stream().map(r -> r.getCode()).collect(Collectors.toSet());
+        Set<String> roles = user.getRoles().stream()
+                .map(Role::getCode)
+                .collect(Collectors.toSet());
+
+        Set<String> permissions = user.getRoles().stream()
+                .flatMap(r -> r.getPermissions().stream())
+                .map(Permission::getCode)
+                .collect(Collectors.toSet());
+
+        Set<String> authorities = roles.stream()
+                .map(r -> "ROLE_" + r.toUpperCase())
+                .collect(Collectors.toSet());
+        authorities.addAll(permissions);
 
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .id(UUID.randomUUID().toString())
@@ -41,13 +55,19 @@ public class JwtService {
                 .expiresAt(now.plusSeconds(expirationSeconds))
                 .subject(user.getUsername())
                 .claim("roles", roles)
+                .claim("permissions", permissions)
+                .claim("authorities", authorities)
                 .claim("tenant_id", String.valueOf(user.getTenant().getId()))
                 .claim("tenant_name", user.getTenant().getName())
                 .claim("username", user.getUsername())
                 .claim("actor", actor == null ? user.getUsername() : actor)
                 .build();
 
-        JwsHeader header = JwsHeader.with(org.springframework.security.oauth2.jose.jws.SignatureAlgorithm.RS256).build();
+        JwsHeader header = JwsHeader.with(org.springframework.security.oauth2.jose.jws.SignatureAlgorithm.RS256)
+                .header("roles", roles)
+                .header("permissions", permissions)
+                .header("authorities", authorities)
+                .build();
         return jwtEncoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
     }
 

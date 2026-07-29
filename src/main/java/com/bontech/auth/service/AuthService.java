@@ -2,6 +2,7 @@ package com.bontech.auth.service;
 
 import com.bontech.auth.dto.AuthDto;
 import com.bontech.auth.entity.PasswordHistory;
+import com.bontech.auth.entity.Role;
 import com.bontech.auth.entity.TwoStepChallenge;
 import com.bontech.auth.entity.UserAccount;
 import com.bontech.auth.entity.UserPhoneNumber;
@@ -328,12 +329,26 @@ public class AuthService {
 
     @Transactional
     public AuthDto.TokenResponse impersonate(AuthDto.ImpersonateRequest request) {
-        UserPhoneNumber actorPhone = phoneRepository.findByUser_Username(request.actorUsername()).stream().findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Actor not found"));
-        UserPhoneNumber targetPhone = phoneRepository.findByUser_Username(request.targetUsername()).stream().findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Target not found"));
-        UserAccount actor = actorPhone.getUser();
-        UserAccount target = targetPhone.getUser();
+        UserAccount actor = findUserByIdentifier(request.actorUsername());
+        UserAccount target = findUserByIdentifier(request.targetUsername());
+
+        boolean isTenantAdmin = actor.getRoles().stream()
+                .map(Role::getCode)
+                .anyMatch(code -> "ADMIN".equalsIgnoreCase(code)
+                               || "TENANT_ADMIN".equalsIgnoreCase(code)
+                               || "ROLE_ADMIN".equalsIgnoreCase(code)
+                               || "ROLE_TENANT_ADMIN".equalsIgnoreCase(code));
+
+        if (!isTenantAdmin) {
+            throw new IllegalArgumentException("Only TenantAdmin (users with ADMIN role) can perform impersonation");
+        }
+
+        Long actorTenant = actor.getTenantId() != null ? actor.getTenantId() : (actor.getTenant() != null ? actor.getTenant().getId() : null);
+        Long targetTenant = target.getTenantId() != null ? target.getTenantId() : (target.getTenant() != null ? target.getTenant().getId() : null);
+
+        if (actorTenant == null || targetTenant == null || !actorTenant.equals(targetTenant)) {
+            throw new IllegalArgumentException("TenantAdmin can only impersonate users within the same tenant");
+        }
 
         String token = jwtService.generate(target, actor.getUsername());
         String refreshToken = jwtService.generateRefreshToken(target);

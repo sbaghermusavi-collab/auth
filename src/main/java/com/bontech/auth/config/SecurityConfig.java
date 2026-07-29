@@ -50,6 +50,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
+import com.bontech.auth.entity.Role;
+import com.bontech.auth.entity.Permission;
 import com.bontech.auth.entity.UserAccount;
 import com.bontech.auth.repository.UserAccountRepository;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -294,12 +296,37 @@ public class SecurityConfig {
     }
 
     @Bean
-    public OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer() {
+    public OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer(UserAccountRepository userAccountRepository) {
         return (context) -> {
             if (context.getTokenType().getValue().equals("id_token") || context.getTokenType().getValue().equals("access_token")) {
-                context.getClaims().claim("preferred_username", context.getPrincipal().getName());
-                // Add any other claims you might want here.
-                // The principal is typically the authenticated user.
+                String username = context.getPrincipal().getName();
+                context.getClaims().claim("preferred_username", username);
+
+                userAccountRepository.findByUsername(username).ifPresent(user -> {
+                    java.util.Set<String> roles = user.getRoles().stream()
+                            .map(Role::getCode)
+                            .collect(Collectors.toSet());
+
+                    java.util.Set<String> permissions = user.getRoles().stream()
+                            .flatMap(r -> r.getPermissions().stream())
+                            .map(Permission::getCode)
+                            .collect(Collectors.toSet());
+
+                    java.util.Set<String> authorities = context.getPrincipal().getAuthorities().stream()
+                            .map(GrantedAuthority::getAuthority)
+                            .collect(Collectors.toSet());
+                    authorities.addAll(permissions);
+
+                    // Add to JWT Claims (Payload)
+                    context.getClaims().claim("roles", roles);
+                    context.getClaims().claim("permissions", permissions);
+                    context.getClaims().claim("authorities", authorities);
+
+                    // Add to JWT Header (JWS Header)
+                    context.getJwsHeader().header("roles", roles);
+                    context.getJwsHeader().header("permissions", permissions);
+                    context.getJwsHeader().header("authorities", authorities);
+                });
             }
         };
     }
