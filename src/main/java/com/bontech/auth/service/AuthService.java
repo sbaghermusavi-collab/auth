@@ -87,7 +87,7 @@ public class AuthService {
              saveSession(user, token);
 
              sessionAuthenticationService.establishSession(httpRequest, httpResponse, user);
-             String redirectUrl = sessionAuthenticationService.resolveRedirectUrl(httpRequest, httpResponse, "http://localhost:4200/whoami");
+             String redirectUrl = sessionAuthenticationService.resolveRedirectUrl(httpRequest, httpResponse, "http://localhost:8090/");
 
              logService.log(user, "LOGIN_SUCCESS", "Login successful (OTP disabled)");
              return new AuthDto.LoginStartResponse(
@@ -195,7 +195,7 @@ public class AuthService {
         saveSession(user, token);
 
         sessionAuthenticationService.establishSession(httpRequest, httpResponse, user);
-        String redirectUrl = sessionAuthenticationService.resolveRedirectUrl(httpRequest, httpResponse, "http://localhost:4200/whoami");
+        String redirectUrl = sessionAuthenticationService.resolveRedirectUrl(httpRequest, httpResponse, "http://localhost:8090/");
 
         logService.log(user, "LOGIN_SUCCESS", "Second step validated");
         return new AuthDto.TokenResponse(token, refreshToken, "Bearer", jwtService.getExpirationSeconds(), redirectUrl);
@@ -234,7 +234,7 @@ public class AuthService {
         saveSession(user, token);
 
         sessionAuthenticationService.establishSession(httpRequest, httpResponse, user);
-        String redirectUrl = sessionAuthenticationService.resolveRedirectUrl(httpRequest, httpResponse, "http://localhost:4200/whoami");
+        String redirectUrl = sessionAuthenticationService.resolveRedirectUrl(httpRequest, httpResponse, "http://localhost:8090/");
 
         return new AuthDto.TokenResponse(token, refreshToken, "Bearer", jwtService.getExpirationSeconds(), redirectUrl);
     }
@@ -268,7 +268,7 @@ public class AuthService {
         saveSession(user, token);
 
         sessionAuthenticationService.establishSession(httpRequest, httpResponse, user);
-        String redirectUrl = sessionAuthenticationService.resolveRedirectUrl(httpRequest, httpResponse, "http://localhost:4200/whoami");
+        String redirectUrl = sessionAuthenticationService.resolveRedirectUrl(httpRequest, httpResponse, "http://localhost:8090/");
 
         return new AuthDto.TokenResponse(token, refreshToken, "Bearer", jwtService.getExpirationSeconds(), redirectUrl);
     }

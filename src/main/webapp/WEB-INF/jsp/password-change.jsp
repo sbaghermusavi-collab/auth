@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>آسانک — تغییر رمز عبور</title>
-  <link rel="stylesheet" href="/resources/css/stylesLogin.css" />
+  <link rel="stylesheet" href="${pageContext.request.contextPath}/resources/css/stylesLogin.css" />
 </head>
 <body>
 <div class="auth-root">
@@ -50,7 +50,7 @@
 <script>
 const params = new URLSearchParams(location.search);
 const identifier = params.get('identifier') || params.get('phone') || '';
-const continueUrl = params.get('continue') || 'http://localhost:4200/whoami';
+const continueUrl = params.get('continue') || 'http://localhost:8090/';
 const isReset = params.get('reset') === 'true' || params.get('mode') === 'reset';
 
 function applyResetMode() {
@@ -82,7 +82,7 @@ function storeTokens(data) {
 }
 
 function safeContinueUrl(target) {
-    if (!target || target === '/success') return 'http://localhost:4200/whoami';
+    if (!target || target === '/success') return 'http://localhost:8090/';
     try {
         const url = new URL(target, window.location.origin);
         if (url.protocol === 'http:' || url.protocol === 'https:') {
@@ -90,7 +90,7 @@ function safeContinueUrl(target) {
         }
         return url.pathname + url.search + url.hash;
     } catch (err) {
-        return target || 'http://localhost:4200/whoami';
+        return target || 'http://localhost:8090/';
     }
 }
 

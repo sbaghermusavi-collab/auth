@@ -123,19 +123,12 @@
 
       $$('input').forEach(el => el.addEventListener('input', validateLogin));
 
-      $('#primary')?.addEventListener('click', () => {
-        const btn = $('#primary');
-        if (btn.disabled) return;
-        const phone = $('#f-identifier').value.trim();
-        if (phone) location.href = `/method?phone=${encodeURIComponent(phone)}&mode=login`;
-      });
+      // Removed #primary and #otp-login click listeners because they conflict with the backend fetch logic in login.jsp
 
-      $('#otp-login')?.addEventListener('click', () => {
-        const phone = $('#f-identifier').value.trim() || '09123456789';
-        location.href = `/method?phone=${encodeURIComponent(phone)}&mode=login`;
+      $('[data-act="to-signup"]')?.addEventListener('click', () => {
+        const cp = window.location.pathname.startsWith('/auth') ? '/auth' : '';
+        location.href = cp + '/register';
       });
-
-      $('[data-act="to-signup"]')?.addEventListener('click', () => location.href = '/register');
     }
 
     /* صفحه ثبت‌نام */
@@ -150,7 +143,10 @@
 
       $$('input').forEach(el => el.addEventListener('input', validateSignup));
 
-      $('[data-act="to-login"]')?.addEventListener('click', () => location.href = '/login');
+      $('[data-act="to-login"]')?.addEventListener('click', () => {
+        const cp = window.location.pathname.startsWith('/auth') ? '/auth' : '';
+        location.href = cp + '/login';
+      });
     }
 
     if (page.includes('otp')) {

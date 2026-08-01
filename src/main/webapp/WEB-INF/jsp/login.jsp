@@ -5,7 +5,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>آسانک — ورود، ثبت‌نام</title>
-    <link rel="stylesheet" href="/resources/css/stylesLogin.css" />
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/resources/css/stylesLogin.css" />
   </head>
   <body>
     <div class="auth-root">
@@ -32,7 +32,7 @@
         </div>
 
         <div class="form-center">
-          <form class="form-card fade-up" id="form-card" action="/api/auth/login" method="post">
+          <form class="form-card fade-up" id="form-card" action="${pageContext.request.contextPath}/api/auth/login" method="post">
             <div style="margin-bottom: 24px">
               <h1 class="scr-title center">ورود به حساب</h1>
               <p
@@ -42,7 +42,7 @@
                 حساب کاربری ندارید؟
 
 
-                <a class="link" href="/register">
+                <a class="link" href="${pageContext.request.contextPath}/register">
   ثبت&zwnj;نام کنید
 </a>
 
@@ -455,7 +455,7 @@
       </aside>
     </div>
 
-    <script src="/resources/js/app.js"></script>
+    <script src="${pageContext.request.contextPath}/resources/js/app.js"></script>
 
 <script>
 let currentCaptchaId = '';
@@ -480,7 +480,7 @@ async function loadCaptcha() {
 }
 
 function safeContinueUrl(target) {
-    if (!target || target === '/success') return 'http://localhost:4200/whoami';
+    if (!target || target === '/success') return 'http://localhost:8090/';
     try {
         const url = new URL(target, window.location.origin);
         if (url.protocol === 'http:' || url.protocol === 'https:') {
@@ -488,7 +488,7 @@ function safeContinueUrl(target) {
         }
         return url.pathname + url.search + url.hash;
     } catch (err) {
-        return target || 'http://localhost:4200/whoami';
+        return target || 'http://localhost:8090/';
     }
 }
 
@@ -519,7 +519,7 @@ function initPage() {
         refreshBtn.onclick = loadCaptcha;
     }
     const continueUrl = getContinueUrl();
-    const registerLink = document.querySelector('a[href="/register"]');
+    const registerLink = document.querySelector('a[href="${pageContext.request.contextPath}/register"]');
     if (registerLink && continueUrl && continueUrl !== '/success') {
         registerLink.href = '/register?continue=' + encodeURIComponent(continueUrl);
     }
@@ -565,7 +565,7 @@ document.getElementById('form-card').addEventListener('submit', async (e) => {
     submitBtn.disabled = true;
 
     try {
-        const response = await fetch('/api/auth/login', {
+        const response = await fetch('${pageContext.request.contextPath}/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -591,7 +591,7 @@ document.getElementById('form-card').addEventListener('submit', async (e) => {
 
         if (data.status === 'PASSWORD_CHANGE_REQUIRED') {
             const pwParams = new URLSearchParams({ identifier, continue: continueUrl });
-            window.location.href = '/password-change?' + pwParams.toString();
+            window.location.href = '${pageContext.request.contextPath}/password-change?' + pwParams.toString();
             return;
         }
 
@@ -602,7 +602,7 @@ document.getElementById('form-card').addEventListener('submit', async (e) => {
                 phone: maskedPhone,
                 continue: continueUrl
             });
-            window.location.href = '/method?' + params.toString();
+            window.location.href = '${pageContext.request.contextPath}/method?' + params.toString();
             return;
         }
 
@@ -613,7 +613,7 @@ document.getElementById('form-card').addEventListener('submit', async (e) => {
                 phone: maskedPhone,
                 continue: continueUrl
             });
-            window.location.href = '/otp?' + params.toString();
+            window.location.href = '${pageContext.request.contextPath}/otp?' + params.toString();
             return;
         }
 
@@ -632,7 +632,7 @@ document.getElementById('form-card').addEventListener('submit', async (e) => {
         clearTimeout(idleTimer);
         idleTimer = setTimeout(() => {
             alert('نشست شما به دلیل عدم فعالیت منقضی شد.');
-            window.location.href = '/login?expired=true';
+            window.location.href = '${pageContext.request.contextPath}/login?expired=true';
         }, timeoutSeconds * 1000);
     }
     ['mousemove', 'keydown', 'click', 'touchstart'].forEach(evt => {

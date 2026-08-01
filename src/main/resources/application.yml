@@ -51,3 +51,7 @@ app:
 
 server:
   max-http-request-header-size: 40KB
+  servlet:
+    context-path: /auth
+  forward-headers-strategy: framework
+  port: 8083

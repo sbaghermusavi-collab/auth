@@ -22,7 +22,7 @@ public class ViewController {
     public String index(Model model) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
-            return "redirect:http://localhost:4200/whoami";
+            return "redirect:http://localhost:8090/";
         }
         addConfig(model);
         return "login";
@@ -32,7 +32,7 @@ public class ViewController {
     public String endpoints(Model model) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
-            return "redirect:http://localhost:4200/whoami";
+            return "redirect:http://localhost:8090/";
         }
         addConfig(model);
         return "login";
@@ -55,7 +55,7 @@ public class ViewController {
         }
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
-            return "redirect:http://localhost:4200/whoami";
+            return "redirect:http://localhost:8090/";
         }
         addConfig(model);
         return "login";

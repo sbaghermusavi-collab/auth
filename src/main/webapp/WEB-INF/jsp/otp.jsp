@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>آسانک — کد تأیید</title>
-  <link rel="stylesheet" href="/resources/css/stylesLogin.css" />
+  <link rel="stylesheet" href="${pageContext.request.contextPath}/resources/css/stylesLogin.css" />
 </head>
 <body>
 
@@ -22,11 +22,11 @@
     </div>    
     <div class="form-center">
       <div class="form-card">
-        <a href="/login" class="btn btn-ghost btn-sm">← تغییر شماره</a>
+        <a href="${pageContext.request.contextPath}/login" class="btn btn-ghost btn-sm">← تغییر شماره</a>
         <h1 class="scr-title">کد تأیید را وارد کنید</h1>
         <p class="scr-sub">کد به شماره <strong id="phone-show"></strong> ارسال شد.</p>
 
-        <form action="/api/auth/otp/verify" method="post">
+        <form action="${pageContext.request.contextPath}/api/auth/otp/verify" method="post">
           <input type="hidden" name="identifier" id="identifier-hidden">
           <input type="hidden" name="phone" id="phone-hidden">
           
@@ -119,7 +119,7 @@
 const params = new URLSearchParams(location.search);
 const identifier = params.get('identifier') || params.get('phone') || '';
 if (!identifier) {
-    window.location.href = '/login';
+    window.location.href = '${pageContext.request.contextPath}/login';
 }
 const phone = params.get('phone') || identifier;
 
@@ -127,7 +127,7 @@ document.getElementById('phone-show').textContent = phone;
 document.getElementById('phone-hidden').value = phone;
 document.getElementById('identifier-hidden').value = identifier;
 function safeContinueUrl(target) {
-    if (!target || target === '/success') return 'http://localhost:4200/whoami';
+    if (!target || target === '/success') return 'http://localhost:8090/';
     try {
         const url = new URL(target, window.location.origin);
         if (url.protocol === 'http:' || url.protocol === 'https:') {
@@ -135,7 +135,7 @@ function safeContinueUrl(target) {
         }
         return url.pathname + url.search + url.hash;
     } catch (err) {
-        return target || 'http://localhost:4200/whoami';
+        return target || 'http://localhost:8090/';
     }
 }
 
@@ -231,7 +231,7 @@ document.getElementById('resend-btn').addEventListener('click', async () => {
     const deliveryMethod = params.get('delivery') || 'sms';
 
     try {
-        const res = await fetch('/api/auth/resend-otp', {
+        const res = await fetch('${pageContext.request.contextPath}/api/auth/resend-otp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ identifier, phone, deliveryMethod })
@@ -259,7 +259,7 @@ document.querySelector('form').addEventListener('submit', async (e) => {
     errorEl.style.display = 'none';
 
     try {
-        const res = await fetch('/api/auth/otp/verify', {
+        const res = await fetch('${pageContext.request.contextPath}/api/auth/otp/verify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ identifier, code })
@@ -274,7 +274,7 @@ document.querySelector('form').addEventListener('submit', async (e) => {
                 return;
             }
             storeTokens(data);
-            window.location.href = (continueUrl && continueUrl !== '/success') ? safeContinueUrl(continueUrl) : (data.redirectUrl || 'http://localhost:4200/whoami');
+            window.location.href = (continueUrl && continueUrl !== '/success') ? safeContinueUrl(continueUrl) : (data.redirectUrl || 'http://localhost:8090/');
         } else {
             errorEl.textContent = await readError(res);
             errorEl.style.display = 'block';
@@ -292,7 +292,7 @@ document.querySelector('form').addEventListener('submit', async (e) => {
         clearTimeout(idleTimer);
         idleTimer = setTimeout(() => {
             alert('نشست شما به دلیل عدم فعالیت منقضی شد.');
-            window.location.href = '/login?expired=true';
+            window.location.href = '${pageContext.request.contextPath}/login?expired=true';
         }, timeoutSeconds * 1000);
     }
     ['mousemove', 'keydown', 'click', 'touchstart'].forEach(evt => {
@@ -303,5 +303,5 @@ document.querySelector('form').addEventListener('submit', async (e) => {
 </script>
 </body>
 
-<script src="/resources/js/app.js"></script>
+<script src="${pageContext.request.contextPath}/resources/js/app.js"></script>
 </html>

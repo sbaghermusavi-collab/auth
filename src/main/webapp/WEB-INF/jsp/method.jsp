@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>آسانک — انتخاب روش دریافت کد</title>
-  <link rel="stylesheet" href="/resources/css/stylesLogin.css" />
+  <link rel="stylesheet" href="${pageContext.request.contextPath}/resources/css/stylesLogin.css" />
 </head>
 <body>
 
@@ -22,11 +22,11 @@
     </div>
     <div class="form-center">
       <div class="form-card">
-        <a href="/login" class="btn btn-ghost btn-sm">← تغییر شماره</a>
+        <a href="${pageContext.request.contextPath}/login" class="btn btn-ghost btn-sm">← تغییر شماره</a>
         <h1 class="scr-title">روش دریافت کد را انتخاب کنید</h1>
         <p class="scr-sub">کد تأیید به شماره <span id="phone-display" class="bold-ink"></span> ارسال خواهد شد.</p>
 
-        <form action="/otp" method="get" id="method-form">
+        <form action="${pageContext.request.contextPath}/otp" method="get" id="method-form">
           <input type="hidden" name="phone" id="phone-hidden">
           <input type="hidden" name="delivery" id="delivery-input" value="sms">
 
@@ -111,7 +111,7 @@
 
 <script>
 function safeContinueUrl(target) {
-    if (!target || target === '/success') return 'http://localhost:4200/whoami';
+    if (!target || target === '/success') return 'http://localhost:8090/';
     try {
         const url = new URL(target, window.location.origin);
         if (url.protocol === 'http:' || url.protocol === 'https:') {
@@ -119,14 +119,14 @@ function safeContinueUrl(target) {
         }
         return url.pathname + url.search + url.hash;
     } catch (err) {
-        return target || 'http://localhost:4200/whoami';
+        return target || 'http://localhost:8090/';
     }
 }
 
 const params = new URLSearchParams(location.search);
 const identifier = params.get('identifier') || params.get('phone') || '';
 if (!identifier) {
-    window.location.href = '/login';
+    window.location.href = '${pageContext.request.contextPath}/login';
 }
 const phone = params.get('phone') || identifier;
 const continueUrl = safeContinueUrl(params.get('continue') || params.get('next'));
@@ -149,7 +149,7 @@ document.getElementById('method-form').addEventListener('submit', async (e) => {
     sendBtn.disabled = true;
 
     try {
-        const res = await fetch('/api/auth/send-otp', {
+        const res = await fetch('${pageContext.request.contextPath}/api/auth/send-otp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ identifier, phone, deliveryMethod })
@@ -162,7 +162,7 @@ document.getElementById('method-form').addEventListener('submit', async (e) => {
                 delivery: deliveryMethod,
                 continue: continueUrl
             });
-            window.location.href = '/otp?' + redirectParams.toString();
+            window.location.href = '${pageContext.request.contextPath}/otp?' + redirectParams.toString();
         } else {
             alert('خطا در ارسال کد. لطفاً دوباره تلاش کنید.');
             sendBtn.disabled = false;
@@ -180,7 +180,7 @@ document.getElementById('method-form').addEventListener('submit', async (e) => {
         clearTimeout(idleTimer);
         idleTimer = setTimeout(() => {
             alert('نشست شما به دلیل عدم فعالیت منقضی شد.');
-            window.location.href = '/login?expired=true';
+            window.location.href = '${pageContext.request.contextPath}/login?expired=true';
         }, timeoutSeconds * 1000);
     }
     ['mousemove', 'keydown', 'click', 'touchstart'].forEach(evt => {

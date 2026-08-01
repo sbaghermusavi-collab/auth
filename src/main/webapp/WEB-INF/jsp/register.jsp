@@ -5,7 +5,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>آسانک — ثبت‌نام</title>
-    <link rel="stylesheet" href="/resources/css/stylesLogin.css" />
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/resources/css/stylesLogin.css" />
   </head>
   <body>
     <div class="auth-root">
@@ -24,7 +24,7 @@
             <div style="margin-bottom:24px">
               <h1 class="scr-title center">ساخت حساب کاربری</h1>
               <p class="muted" style="margin-top:9px;font-size:14.5px;text-align:center">
-                قبلاً ثبت‌نام کرده‌اید؟ <a href="/login" class="link">وارد شوید</a>
+                قبلاً ثبت‌نام کرده‌اید؟ <a href="${pageContext.request.contextPath}/login" class="link">وارد شوید</a>
               </p>
             </div>
             
@@ -215,7 +215,7 @@
       </aside>
     </div>
 
-    <script src="/resources/js/app.js"></script>
+    <script src="${pageContext.request.contextPath}/resources/js/app.js"></script>
     <script>
     document.getElementById('pw-toggle-btn')?.addEventListener('click', function() {
         const pw = document.getElementById('f-pw');
@@ -237,7 +237,7 @@
     });
 
     function safeContinueUrl(target) {
-        if (!target || target === '/success') return 'http://localhost:4200/whoami';
+        if (!target || target === '/success') return 'http://localhost:8090/';
         try {
             const url = new URL(target, window.location.origin);
             if (url.protocol === 'http:' || url.protocol === 'https:') {
@@ -245,7 +245,7 @@
             }
             return url.pathname + url.search + url.hash;
         } catch (err) {
-            return target || 'http://localhost:4200/whoami';
+            return target || 'http://localhost:8090/';
         }
     }
 
@@ -257,7 +257,7 @@
 
     document.getElementById('otp-login')?.addEventListener('click', () => {
         const continueUrl = getContinueUrl();
-        window.location.href = '/login?continue=' + encodeURIComponent(continueUrl);
+        window.location.href = '${pageContext.request.contextPath}/login?continue=' + encodeURIComponent(continueUrl);
     });
 
     document.getElementById('register-form').addEventListener('submit', async (e) => {
@@ -287,7 +287,7 @@
         };
 
         try {
-            const res = await fetch('/api/auth/register', {
+            const res = await fetch('${pageContext.request.contextPath}/api/auth/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -299,7 +299,7 @@
                     phone: phone,
                     continue: getContinueUrl()
                 });
-                window.location.href = '/method?' + redirectParams.toString();
+                window.location.href = '${pageContext.request.contextPath}/method?' + redirectParams.toString();
             } else {
                 let msg = 'ثبت‌نام ناموفق بود.';
                 try {

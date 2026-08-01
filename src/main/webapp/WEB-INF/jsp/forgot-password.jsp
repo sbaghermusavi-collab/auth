@@ -5,7 +5,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>آسانک — بازیابی رمز عبور</title>
-    <link rel="stylesheet" href="/resources/css/stylesLogin.css" />
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/resources/css/stylesLogin.css" />
   </head>
   <body>
     <div class="auth-root">
@@ -33,7 +33,7 @@
 
         <div class="form-center">
           <div class="form-card fade-up" id="form-card">
-            <a href="/login" class="btn btn-ghost btn-sm" id="back-link" style="margin-bottom: 12px; display: inline-flex;">← بازگشت به ورود</a>
+            <a href="${pageContext.request.contextPath}/login" class="btn btn-ghost btn-sm" id="back-link" style="margin-bottom: 12px; display: inline-flex;">← بازگشت به ورود</a>
             <div style="margin-bottom: 24px">
               <h1 class="scr-title">بازیابی رمز عبور</h1>
               <p class="muted" style="margin-top: 9px; font-size: 14.5px;">
@@ -350,12 +350,12 @@
       </aside>
     </div>
 
-    <script src="/resources/js/app.js"></script>
+    <script src="${pageContext.request.contextPath}/resources/js/app.js"></script>
     <script>
     let currentCaptchaId = '';
 
     function safeContinueUrl(target) {
-        if (!target || target === '/success') return 'http://localhost:4200/whoami';
+        if (!target || target === '/success') return 'http://localhost:8090/';
         try {
             const url = new URL(target, window.location.origin);
             if (url.protocol === 'http:' || url.protocol === 'https:') {
@@ -363,7 +363,7 @@
             }
             return url.pathname + url.search + url.hash;
         } catch (err) {
-            return target || 'http://localhost:4200/whoami';
+            return target || 'http://localhost:8090/';
         }
     }
 
@@ -445,7 +445,7 @@
             continue: pwChangeContinue
         });
 
-        window.location.href = '/method?' + params.toString();
+        window.location.href = '${pageContext.request.contextPath}/method?' + params.toString();
     });
     </script>
   </body>

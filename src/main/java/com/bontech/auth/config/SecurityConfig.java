@@ -89,7 +89,7 @@ public class SecurityConfig {
                         .failureHandler((request, response, exception) -> {
                             log.error("[AUTH SERVER FORM LOGIN FAILED] URI: {} | Exception: {} - Redirecting to /login?error",
                                     request.getRequestURI(), exception.getMessage(), exception);
-                            response.sendRedirect("/login?error");
+                            response.sendRedirect(request.getContextPath() + "/login?error");
                         })
                         .permitAll());
 
@@ -134,7 +134,7 @@ public class SecurityConfig {
                         .failureHandler((request, response, exception) -> {
                             log.error("[APP FORM LOGIN FAILED] URI: {} | Exception: {} - Redirecting to /login?error",
                                     request.getRequestURI(), exception.getMessage(), exception);
-                            response.sendRedirect("/login?error");
+                            response.sendRedirect(request.getContextPath() + "/login?error");
                         })
                         .permitAll())
                 .logout(logout -> logout
@@ -243,10 +243,11 @@ public class SecurityConfig {
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .redirectUri("http://localhost/login/oauth2/code/keycloak")
-                .redirectUri("http://localhost:4200/login/oauth2/code/keycloak")
-                .redirectUri("http://localhost:4200/whoami")
-                .redirectUri("http://localhost:4200/home")
-                .redirectUri("http://localhost:4200")
+                .redirectUri("http://localhost:8090/login/oauth2/code/keycloak")
+                .redirectUri("http://localhost:8090/login/oauth2/code/keycloak")
+                .redirectUri("http://localhost:8090/")
+                .redirectUri("http://localhost:8090/")
+                .redirectUri("http://localhost:8090")
                 .scope("openid")
                 .scope("profile")
                 .scope("email")

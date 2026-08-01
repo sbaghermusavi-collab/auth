@@ -89,5 +89,5 @@
   </aside></div>
 
 </body>
-<script src="/resources/js/app.js"></script>
+<script src="${pageContext.request.contextPath}/resources/js/app.js"></script>
 </html>
