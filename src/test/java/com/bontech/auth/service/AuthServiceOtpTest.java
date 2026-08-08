@@ -57,6 +57,10 @@ class AuthServiceOtpTest {
     private AppProperties properties;
     @Mock
     private OtpService otpService;
+    @Mock
+    private org.springframework.data.redis.core.RedisTemplate<String, com.bontech.auth.dto.PreAuthSession> preAuthSessionRedisTemplate;
+    @Mock
+    private org.springframework.data.redis.core.ValueOperations<String, com.bontech.auth.dto.PreAuthSession> valueOperations;
 
     @InjectMocks
     private AuthService authService;
@@ -89,6 +93,7 @@ class AuthServiceOtpTest {
         phone.setPhoneNumber("09123456789");
         phone.setPreferredNumber(true);
 
+        when(preAuthSessionRedisTemplate.opsForValue()).thenReturn(valueOperations);
         when(properties.getAuth()).thenReturn(authProperties);
         when(userAccountRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
         when(encoder.matches("testuser", "raw_pw", "hashed_pw")).thenReturn(true);
@@ -98,16 +103,21 @@ class AuthServiceOtpTest {
 
         assertNotNull(response);
         assertEquals("NEED_DELIVERY_METHOD", response.status());
+        assertNotNull(response.authSessionId());
+        verify(preAuthSessionRedisTemplate.opsForValue(), times(1)).set(anyString(), any(), any());
         verify(otpService, never()).createAndSendChallenge(any(), any(), any());
     }
 
     @Test
     @DisplayName("Should send OTP via OtpService when deliveryMethod is specified")
     void testSendOtpServiceIntegration() {
-        AuthDto.SendOtpRequest request = new AuthDto.SendOtpRequest("testuser", "09123456789", "voice");
+        AuthDto.SendOtpRequest request = new AuthDto.SendOtpRequest("test-session-123", "09123456789", "voice");
+        com.bontech.auth.dto.PreAuthSession session = new com.bontech.auth.dto.PreAuthSession("testuser", List.of(), false);
         UserPhoneNumber phone = new UserPhoneNumber();
         phone.setPhoneNumber("09123456789");
 
+        when(preAuthSessionRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("test-session-123")).thenReturn(session);
         when(userAccountRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
         when(phoneRepository.findByUser_Username("testuser")).thenReturn(List.of(phone));
 
@@ -121,11 +131,14 @@ class AuthServiceOtpTest {
     @Test
     @DisplayName("Should verify second step via OtpService")
     void testVerifySecondStepDelegatesToOtpService() {
-        AuthDto.TwoStepVerifyRequest request = new AuthDto.TwoStepVerifyRequest("testuser", "999999");
+        AuthDto.TwoStepVerifyRequest request = new AuthDto.TwoStepVerifyRequest("test-session-123", "999999");
+        com.bontech.auth.dto.PreAuthSession session = new com.bontech.auth.dto.PreAuthSession("testuser", List.of(), false);
         TwoStepChallenge challenge = new TwoStepChallenge();
         challenge.setCode("999999");
         challenge.setUsed(true);
 
+        when(preAuthSessionRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("test-session-123")).thenReturn(session);
         when(userAccountRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
         when(otpService.verifyChallenge(testUser, "999999")).thenReturn(challenge);
         when(jwtService.generate(any(), any())).thenReturn("mock_token");
@@ -136,6 +149,19 @@ class AuthServiceOtpTest {
         assertNotNull(response);
         assertEquals("mock_token", response.accessToken());
         verify(otpService, times(1)).verifyChallenge(testUser, "999999");
+        verify(preAuthSessionRedisTemplate, times(1)).delete("test-session-123");
+    }
+
+    @Test
+    @DisplayName("Should throw IllegalArgumentException if authSessionId is invalid")
+    void testInvalidAuthSessionId() {
+        AuthDto.SendOtpRequest request = new AuthDto.SendOtpRequest("invalid-session-123", "09123456789", "voice");
+        
+        when(preAuthSessionRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("invalid-session-123")).thenReturn(null);
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> authService.sendOtp(request));
+        assertEquals("Session expired or invalid. Please login again.", ex.getMessage());
     }
 
     @Test

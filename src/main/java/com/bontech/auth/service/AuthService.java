@@ -1,5 +1,9 @@
 package com.bontech.auth.service;
 
+import java.util.UUID;
+import java.time.Duration;
+import org.springframework.data.redis.core.RedisTemplate;
+import com.bontech.auth.dto.PreAuthSession;
 import com.bontech.auth.dto.AuthDto;
 import com.bontech.auth.entity.PasswordHistory;
 import com.bontech.auth.entity.Role;
@@ -42,6 +46,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final ActivityLogService logService;
     private final SessionAuthenticationService sessionAuthenticationService;
+    private final RedisTemplate<String, PreAuthSession> preAuthSessionRedisTemplate;
     private static final SecureRandom OTP_RANDOM = new SecureRandom();
 
     private final OtpService otpService;
@@ -78,7 +83,7 @@ public class AuthService {
                          "PASSWORD_CHANGE_REQUIRED",
                          "Password change required",
                          phones.stream().map(p -> new AuthDto.MaskedPhone(mask(p.getPhoneNumber()), p.getNationalCode())).toList(),
-                         true, null, null, null, null
+                         true, null, null, null, null, null
                  );
              }
 
@@ -95,12 +100,18 @@ public class AuthService {
                     "Login successful",
                     phones.stream().map(p -> new AuthDto.MaskedPhone(mask(p.getPhoneNumber()), p.getNationalCode())).toList(),
                     passwordChangeRequired,
+                    null,
                     token,
                     refreshToken,
                     jwtService.getExpirationSeconds(),
                     redirectUrl
              );
         }
+
+        List<AuthDto.MaskedPhone> maskedPhones = phones.stream().map(p -> new AuthDto.MaskedPhone(mask(p.getPhoneNumber()), p.getNationalCode())).toList();
+        String authSessionId = UUID.randomUUID().toString();
+        PreAuthSession session = new PreAuthSession(user.getUsername(), maskedPhones, passwordChangeRequired);
+        preAuthSessionRedisTemplate.opsForValue().set(authSessionId, session, Duration.ofMinutes(5));
 
         UserPhoneNumber target = phones.stream().filter(UserPhoneNumber::isPreferredNumber).findFirst().orElse(phones.getFirst());
 
@@ -110,9 +121,9 @@ public class AuthService {
             return new AuthDto.LoginStartResponse(
                     "OTP_SENT",
                     "Two-step code sent",
-                    phones.stream().map(p -> new AuthDto.MaskedPhone(mask(p.getPhoneNumber()), p.getNationalCode())).toList(),
+                    maskedPhones,
                     passwordChangeRequired,
-                    null, null, null, null
+                    authSessionId, null, null, null, null
             );
         }
 
@@ -120,15 +131,19 @@ public class AuthService {
         return new AuthDto.LoginStartResponse(
                 "NEED_DELIVERY_METHOD",
                 "Please select delivery method",
-                phones.stream().map(p -> new AuthDto.MaskedPhone(mask(p.getPhoneNumber()), p.getNationalCode())).toList(),
+                maskedPhones,
                 passwordChangeRequired,
-                null, null, null, null
+                authSessionId, null, null, null, null
         );
     }
 
     @Transactional
     public AuthDto.SelectPhoneResponse sendOtp(AuthDto.SendOtpRequest request) {
-        UserAccount user = findUserByIdentifier(request.identifier());
+        PreAuthSession session = preAuthSessionRedisTemplate.opsForValue().get(request.authSessionId());
+        if (session == null) {
+            throw new IllegalArgumentException("Session expired or invalid. Please login again.");
+        }
+        UserAccount user = findUserByIdentifier(session.identifier());
 
         List<UserPhoneNumber> phones = phoneRepository.findByUser_Username(user.getUsername());
         if (phones.isEmpty()) {
@@ -155,7 +170,11 @@ public class AuthService {
 
     @Transactional
     public AuthDto.SelectPhoneResponse selectPhone(AuthDto.SelectPhoneRequest request) {
-        UserAccount user = findUserByIdentifier(request.identifier());
+        PreAuthSession session = preAuthSessionRedisTemplate.opsForValue().get(request.authSessionId());
+        if (session == null) {
+            throw new IllegalArgumentException("Session expired or invalid. Please login again.");
+        }
+        UserAccount user = findUserByIdentifier(session.identifier());
 
         List<UserPhoneNumber> phones = phoneRepository.findByUser_Username(user.getUsername());
         if (phones.isEmpty()) {
@@ -181,9 +200,14 @@ public class AuthService {
     public AuthDto.TokenResponse verifySecondStep(AuthDto.TwoStepVerifyRequest request,
                                                    HttpServletRequest httpRequest,
                                                    HttpServletResponse httpResponse) {
-        UserAccount user = findUserByIdentifier(request.identifier());
+        PreAuthSession session = preAuthSessionRedisTemplate.opsForValue().get(request.authSessionId());
+        if (session == null) {
+            throw new IllegalArgumentException("Session expired or invalid. Please login again.");
+        }
+        UserAccount user = findUserByIdentifier(session.identifier());
 
         otpService.verifyChallenge(user, request.code());
+        preAuthSessionRedisTemplate.delete(request.authSessionId());
 
         if (isPasswordChangeRequired(user)) {
             logService.log(user, "PASSWORD_EXPIRED", "Password expired; change password required");

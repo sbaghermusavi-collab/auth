@@ -28,6 +28,7 @@
 
         <form action="${pageContext.request.contextPath}/otp" method="get" id="method-form">
           <input type="hidden" name="phone" id="phone-hidden">
+          <input type="hidden" name="authSessionId" id="authSessionId-hidden">
           <input type="hidden" name="delivery" id="delivery-input" value="sms">
 
           <div class="method-list">
@@ -125,7 +126,8 @@ function safeContinueUrl(target) {
 
 const params = new URLSearchParams(location.search);
 const identifier = params.get('identifier') || params.get('phone') || '';
-if (!identifier) {
+const authSessionId = params.get('authSessionId') || '';
+if (!authSessionId) {
     window.location.href = '${pageContext.request.contextPath}/login';
 }
 const phone = params.get('phone') || identifier;
@@ -133,6 +135,7 @@ const continueUrl = safeContinueUrl(params.get('continue') || params.get('next')
 
 document.getElementById('phone-display').textContent = phone;
 document.getElementById('phone-hidden').value = phone;
+document.getElementById('authSessionId-hidden').value = authSessionId;
 
 document.querySelectorAll('.method').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -152,12 +155,13 @@ document.getElementById('method-form').addEventListener('submit', async (e) => {
         const res = await fetch('${pageContext.request.contextPath}/api/auth/send-otp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ identifier, phone, deliveryMethod })
+            body: JSON.stringify({ authSessionId, phone, deliveryMethod })
         });
 
         if (res.ok) {
             const redirectParams = new URLSearchParams({
                 identifier,
+                authSessionId,
                 phone,
                 delivery: deliveryMethod,
                 continue: continueUrl

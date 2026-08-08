@@ -23,17 +23,17 @@ public final class AuthDto {
 
     public record LoginStartRequest(@NotBlank String identifier, String password, String captchaId, String captchaToken, String deliveryMethod) {}
 
-    public record LoginStartResponse(String status, String message, List<MaskedPhone> candidates, boolean passwordChangeRequired, String accessToken, String refreshToken, Long expiresIn, String redirectUrl) {}
+    public record LoginStartResponse(String status, String message, List<MaskedPhone> candidates, boolean passwordChangeRequired, String authSessionId, String accessToken, String refreshToken, Long expiresIn, String redirectUrl) {}
 
-    public record SelectPhoneRequest(@NotBlank String identifier, @NotBlank String nationalCode) {}
+    public record SelectPhoneRequest(@NotBlank String authSessionId, @NotBlank String nationalCode) {}
 
     public record SelectPhoneResponse(String status, String message, boolean passwordChangeRequired) {}
 
-    public record SendOtpRequest(@NotBlank String identifier, String phone, String deliveryMethod) {}
+    public record SendOtpRequest(@NotBlank String authSessionId, String phone, String deliveryMethod) {}
 
     public record MaskedPhone(String phone, String nationalCode) {}
 
-    public record TwoStepVerifyRequest(@NotBlank String identifier, @NotBlank String code) {}
+    public record TwoStepVerifyRequest(@NotBlank String authSessionId, @NotBlank String code) {}
 
     public record TokenResponse(String accessToken, String refreshToken, String tokenType, long expiresIn, String redirectUrl) {}
 

@@ -461,6 +461,10 @@
 let currentCaptchaId = '';
 
 async function loadCaptcha() {
+    const capField = document.getElementById('captcha-field');
+    if (capField && (capField.style.display === 'none' || getComputedStyle(capField).display === 'none')) {
+        return;
+    }
     const captchaUrl = "${captchaUrl}";
     if (!captchaUrl) return;
     try {
@@ -590,7 +594,7 @@ document.getElementById('form-card').addEventListener('submit', async (e) => {
         }
 
         if (data.status === 'PASSWORD_CHANGE_REQUIRED') {
-            const pwParams = new URLSearchParams({ identifier, continue: continueUrl });
+            const pwParams = new URLSearchParams({ identifier, authSessionId: data.authSessionId || '', continue: continueUrl });
             window.location.href = '${pageContext.request.contextPath}/password-change?' + pwParams.toString();
             return;
         }
@@ -599,6 +603,7 @@ document.getElementById('form-card').addEventListener('submit', async (e) => {
             const maskedPhone = data.candidates && data.candidates.length > 0 ? data.candidates[0].phone : identifier;
             const params = new URLSearchParams({
                 identifier,
+                authSessionId: data.authSessionId || '',
                 phone: maskedPhone,
                 continue: continueUrl
             });
@@ -610,6 +615,7 @@ document.getElementById('form-card').addEventListener('submit', async (e) => {
             const maskedPhone = data.candidates && data.candidates.length > 0 ? data.candidates[0].phone : identifier;
             const params = new URLSearchParams({
                 identifier,
+                authSessionId: data.authSessionId || '',
                 phone: maskedPhone,
                 continue: continueUrl
             });

@@ -28,6 +28,7 @@
 
         <form action="${pageContext.request.contextPath}/api/auth/otp/verify" method="post">
           <input type="hidden" name="identifier" id="identifier-hidden">
+          <input type="hidden" name="authSessionId" id="authSessionId-hidden">
           <input type="hidden" name="phone" id="phone-hidden">
           
           <div class="otp-inputs" dir="ltr">
@@ -118,13 +119,15 @@
 <script>
 const params = new URLSearchParams(location.search);
 const identifier = params.get('identifier') || params.get('phone') || '';
-if (!identifier) {
+const authSessionId = params.get('authSessionId') || '';
+if (!authSessionId) {
     window.location.href = '${pageContext.request.contextPath}/login';
 }
 const phone = params.get('phone') || identifier;
 
 document.getElementById('phone-show').textContent = phone;
 document.getElementById('phone-hidden').value = phone;
+document.getElementById('authSessionId-hidden').value = authSessionId;
 document.getElementById('identifier-hidden').value = identifier;
 function safeContinueUrl(target) {
     if (!target || target === '/success') return 'http://localhost:8090/';
@@ -234,7 +237,7 @@ document.getElementById('resend-btn').addEventListener('click', async () => {
         const res = await fetch('${pageContext.request.contextPath}/api/auth/resend-otp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ identifier, phone, deliveryMethod })
+            body: JSON.stringify({ authSessionId, phone, deliveryMethod })
         });
 
         if (res.ok) {
@@ -262,7 +265,7 @@ document.querySelector('form').addEventListener('submit', async (e) => {
         const res = await fetch('${pageContext.request.contextPath}/api/auth/otp/verify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ identifier, code })
+            body: JSON.stringify({ authSessionId, code })
         });
 
         if (res.ok) {

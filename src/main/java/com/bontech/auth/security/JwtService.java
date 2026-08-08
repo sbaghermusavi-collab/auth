@@ -4,6 +4,7 @@ import com.bontech.auth.entity.UserAccount;
 import com.bontech.auth.entity.Permission;
 import com.bontech.auth.entity.Role;
 import java.time.Instant;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -34,40 +35,57 @@ public class JwtService {
 
     public String generate(UserAccount user, String actor) {
         Instant now = Instant.now();
-        Set<String> roles = user.getRoles().stream()
-                .map(Role::getCode)
-                .collect(Collectors.toSet());
 
         Set<String> permissions = user.getRoles().stream()
                 .flatMap(r -> r.getPermissions().stream())
                 .map(Permission::getCode)
                 .collect(Collectors.toSet());
 
-        Set<String> authorities = roles.stream()
-                .map(r -> "ROLE_" + r.toUpperCase())
-                .collect(Collectors.toSet());
-        authorities.addAll(permissions);
+        String userSub = UUID.nameUUIDFromBytes(("user:" + user.getId()).getBytes()).toString();
+        String sessionId = UUID.randomUUID().toString();
+
+        java.util.Map<String, Object> realmAccess = java.util.Map.of(
+                "roles", permissions.isEmpty() ? List.of("us.userProfile.create") : permissions
+        );
+
+        java.util.Map<String, Object> customer = java.util.Map.of(
+                "id", user.getId(),
+                "first_name", user.getUsername(),
+                "last_name", ""
+        );
 
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .id(UUID.randomUUID().toString())
-                .issuer("self")
+                .issuer("http://milky.peykasa.ir/auth/realms/milky-way")
                 .issuedAt(now)
                 .expiresAt(now.plusSeconds(expirationSeconds))
-                .subject(user.getUsername())
-                .claim("roles", roles)
-                .claim("permissions", permissions)
-                .claim("authorities", authorities)
-                .claim("tenant_id", String.valueOf(user.getTenant().getId()))
-                .claim("tenant_name", user.getTenant().getName())
+                .subject(userSub)
+                .claim("auth_time", now.getEpochSecond())
+                .claim("aud", List.of("realm-management", "account"))
+                .claim("typ", "Bearer")
+                .claim("azp", "asanak")
+                .claim("sid", sessionId)
+                .claim("acr", "1")
+                .claim("allowed-origins", List.of())
+                .claim("realm_access", realmAccess)
+                .claim("scope", "openid profile email Company_ID_Mapper organization")
+                .claim("panel_id", "1")
+                .claim("email_verified", true)
+                .claim("name", user.getUsername())
+                .claim("preferred_username", user.getUsername())
+                .claim("locale", "fa")
+                .claim("given_name", user.getUsername())
+                .claim("family_name", "")
+                .claim("userId", user.getId())
+                .claim("email", user.getUsername())
+                .claim("customer", customer)
+                .claim("tenant_id", String.valueOf(user.getTenant() != null ? user.getTenant().getId() : user.getTenantId()))
+                .claim("tenant_name", user.getTenant() != null ? user.getTenant().getName() : "")
                 .claim("username", user.getUsername())
                 .claim("actor", actor == null ? user.getUsername() : actor)
                 .build();
 
-        JwsHeader header = JwsHeader.with(org.springframework.security.oauth2.jose.jws.SignatureAlgorithm.RS256)
-                .header("roles", roles)
-                .header("permissions", permissions)
-                .header("authorities", authorities)
-                .build();
+        JwsHeader header = JwsHeader.with(org.springframework.security.oauth2.jose.jws.SignatureAlgorithm.RS256).build();
         return jwtEncoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
     }
 

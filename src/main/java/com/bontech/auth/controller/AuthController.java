@@ -94,9 +94,12 @@ public class AuthController {
 
     @PostMapping(value = "/login/select-phone", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
     public AuthDto.SelectPhoneResponse selectPhoneForm(HttpServletRequest httpRequest) {
-        String identifier = httpRequest.getParameter("identifier");
+        String authSessionId = httpRequest.getParameter("authSessionId");
+        if (authSessionId == null || authSessionId.isBlank()) {
+            authSessionId = httpRequest.getParameter("identifier");
+        }
         String nationalCode = httpRequest.getParameter("nationalCode");
-        AuthDto.SelectPhoneRequest request = new AuthDto.SelectPhoneRequest(identifier, nationalCode);
+        AuthDto.SelectPhoneRequest request = new AuthDto.SelectPhoneRequest(authSessionId, nationalCode);
         return authService.selectPhone(request);
     }
 
@@ -107,13 +110,16 @@ public class AuthController {
 
     @PostMapping(value = {"/send-otp", "/resend-otp"}, consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
     public AuthDto.SelectPhoneResponse sendOtpForm(HttpServletRequest httpRequest) {
-        String identifier = httpRequest.getParameter("identifier");
+        String authSessionId = httpRequest.getParameter("authSessionId");
+        if (authSessionId == null || authSessionId.isBlank()) {
+            authSessionId = httpRequest.getParameter("identifier");
+        }
         String phone = httpRequest.getParameter("phone");
         String deliveryMethod = httpRequest.getParameter("deliveryMethod");
         if (deliveryMethod == null) {
             deliveryMethod = httpRequest.getParameter("delivery");
         }
-        AuthDto.SendOtpRequest request = new AuthDto.SendOtpRequest(identifier, phone, deliveryMethod);
+        AuthDto.SendOtpRequest request = new AuthDto.SendOtpRequest(authSessionId, phone, deliveryMethod);
         return authService.sendOtp(request);
     }
 
@@ -125,9 +131,12 @@ public class AuthController {
 
     @PostMapping(value = {"/verify-2fa", "/otp/verify"}, consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
     public AuthDto.TokenResponse verifySecondStepForm(HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
-        String identifier = httpRequest.getParameter("identifier");
-        if (identifier == null || identifier.isBlank()) {
-            identifier = httpRequest.getParameter("phone");
+        String authSessionId = httpRequest.getParameter("authSessionId");
+        if (authSessionId == null || authSessionId.isBlank()) {
+            authSessionId = httpRequest.getParameter("identifier");
+        }
+        if (authSessionId == null || authSessionId.isBlank()) {
+            authSessionId = httpRequest.getParameter("phone");
         }
         String code = httpRequest.getParameter("code");
         if (code == null || code.isBlank()) {
@@ -140,7 +149,7 @@ public class AuthController {
                          + nullToEmpty(httpRequest.getParameter("c6"))).trim();
             }
         }
-        AuthDto.TwoStepVerifyRequest request = new AuthDto.TwoStepVerifyRequest(identifier, code);
+        AuthDto.TwoStepVerifyRequest request = new AuthDto.TwoStepVerifyRequest(authSessionId, code);
         return authService.verifySecondStep(request, httpRequest, httpResponse);
     }
 
