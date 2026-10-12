@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Enterprise Multi-Tenant Custom-Domain & BFF Architecture Guide</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: rgba(18, 26, 44, 0.75);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --primary: #38bdf8;
+      --primary-glow: rgba(56, 189, 248, 0.25);
+      --secondary: #818cf8;
+      --accent: #34d399;
+      --warning: #fbbf24;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --code-bg: #0d1321;
+      --radius: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.12) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(129, 140, 248, 0.12) 0px, transparent 50%),
+        radial-gradient(at 50% 50%, rgba(15, 23, 42, 0.8) 0px, transparent 100%);
+      color: var(--text);
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      line-height: 1.6;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 60px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: var(--primary);
+      padding: 6px 16px;
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      font-size: 3rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #38bdf8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 16px;
+    }
+
+    .subtitle {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      max-width: 760px;
+      margin: 0 auto;
+    }
+
+    .section-title {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin: 48px 0 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .section-title::before {
+      content: "";
+      width: 4px;
+      height: 28px;
+      background: linear-gradient(to bottom, var(--primary), var(--secondary));
+      border-radius: 4px;
+    }
+
+    /* Cards & Layout */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 24px;
+      margin-bottom: 36px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 28px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .card-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1.2rem;
+    }
+
+    .icon-edge { background: rgba(56, 189, 248, 0.15); color: var(--primary); }
+    .icon-bff { background: rgba(129, 140, 248, 0.15); color: var(--secondary); }
+    .icon-auth { background: rgba(52, 211, 153, 0.15); color: var(--accent); }
+    .icon-fe { background: rgba(251, 191, 36, 0.15); color: var(--warning); }
+
+    .card h3 {
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+
+    .card p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-bottom: 16px;
+    }
+
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tag {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: #e2e8f0;
+    }
+
+    /* Architecture Visual Diagram */
+    .diagram-container {
+      background: #0b111e;
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      border-radius: var(--radius);
+      padding: 36px;
+      margin-bottom: 40px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .diagram-flow {
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    .flow-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      position: relative;
+    }
+
+    .node {
+      background: #151d30;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      padding: 16px 24px;
+      text-align: center;
+      min-width: 220px;
+      position: relative;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+
+    .node.domain {
+      border-color: rgba(56, 189, 248, 0.4);
+      background: linear-gradient(180deg, #151d30 0%, #101826 100%);
+    }
+
+    .node.traefik {
+      border-color: var(--primary);
+      box-shadow: 0 0 25px var(--primary-glow);
+    }
+
+    .node.bff {
+      border-color: var(--secondary);
+    }
+
+    .node.auth {
+      border-color: var(--accent);
+    }
+
+    .node.ui {
+      border-color: var(--warning);
+    }
+
+    .node-title {
+      font-weight: 700;
+      font-size: 1rem;
+      margin-bottom: 4px;
+    }
+
+    .node-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .connector-down {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: var(--primary);
+      font-size: 1.5rem;
+      margin: -10px 0;
+    }
+
+    /* Comparison Table */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 24px 0;
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--card-border);
+    }
+
+    th, td {
+      padding: 16px 20px;
+      text-align: left;
+    }
+
+    th {
+      background: rgba(255, 255, 255, 0.04);
+      font-weight: 700;
+      color: var(--text);
+      border-bottom: 1px solid var(--card-border);
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    td {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text);
+    }
+
+    /* Code Snippets */
+    pre {
+      background: var(--code-bg);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      padding: 20px;
+      overflow-x: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.88rem;
+      color: #cbd5e1;
+      margin-bottom: 24px;
+    }
+
+    .hl-keyword { color: #f43f5e; font-weight: 600; }
+    .hl-attr { color: #38bdf8; }
+    .hl-val { color: #34d399; }
+    .hl-comment { color: #64748b; font-style: italic; }
+
+    /* Callout */
+    .callout {
+      border-left: 4px solid var(--primary);
+      background: rgba(56, 189, 248, 0.06);
+      padding: 20px 24px;
+      border-radius: 0 var(--radius) var(--radius) 0;
+      margin: 24px 0;
+    }
+
+    .callout-title {
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 6px;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 60px;
+      padding-top: 30px;
+      border-top: 1px solid var(--card-border);
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="badge">Architecture Blueprint</div>
+    <h1>Multi-Tenant Custom-Domain & BFF Flow</h1>
+    <p class="subtitle">Complete technical specification of domain resolution, header propagation, BFF security isolation, and dynamic per-tenant theme & asset loading.</p>
+  </header>
+
+  <!-- 1. Technical Layers -->
+  <div class="section-title">Core Architectural Layers</div>
+  <div class="grid">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon icon-edge">1</div>
+        <h3>Edge Ingress Layer (Traefik)</h3>
+      </div>
+      <p>Single entry point for all external traffic. Detects domain name from HTTP <code>Host</code>, looks up tenant mappings, and injects authoritative <code>X-TENANT-ID</code> and <code>X-Tenant-Id</code> headers before forwarding to internal services.</p>
+      <div class="tag-list">
+        <span class="tag">Traefik v3</span>
+        <span class="tag">CustomRequestHeaders</span>
+        <span class="tag">Zero Trust Perimeter</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon icon-bff">2</div>
+        <h3>BFF Layer (Spring Cloud Gateway)</h3>
+      </div>
+      <p>Backend-For-Frontend acting as a confidential OAuth2 client. Holds access/refresh tokens securely in Redis-backed server sessions. The browser only sees an HTTP-only session cookie. Propagates tenant context downstream.</p>
+      <div class="tag-list">
+        <span class="tag">Token Relay</span>
+        <span class="tag">Session Cookie</span>
+        <span class="tag">No Token Exposure</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon icon-auth">3</div>
+        <h3>Auth Server (Spring Auth 1.4)</h3>
+      </div>
+      <p>Central OAuth2 / OIDC provider. Resolves tenant via <code>TenantResolutionFilter</code>, serves tenant-branded login UI and tenant-scoped theme CSS & vector logos from <code>/tenant-assets/</code>.</p>
+      <div class="tag-list">
+        <span class="tag">Spring Authorization Server</span>
+        <span class="tag">Dynamic Branding</span>
+        <span class="tag">Tenant Isolation</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon icon-fe">4</div>
+        <h3>Frontend UI Layer (Panel)</h3>
+      </div>
+      <p>Single SPA deployment serving all tenants. Dynamically adapts its theme (CSS variables) and vector brand assets based on tenant context without requiring separate rebuilds or deployments.</p>
+      <div class="tag-list">
+        <span class="tag">React / Vite</span>
+        <span class="tag">TenantThemeContext</span>
+        <span class="tag">CSS Custom Properties</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Visual Architecture Diagram -->
+  <div class="section-title">End-to-End System Topology & Traffic Flow</div>
+  <div class="diagram-container">
+    <div class="diagram-flow">
+      <!-- Clients / Domains -->
+      <div class="flow-row">
+        <div class="node domain">
+          <div class="node-title">smslocal.ir</div>
+          <div class="node-desc">Client Browser (SMS Local)</div>
+        </div>
+        <div class="node domain">
+          <div class="node-title">asanlocal.ir</div>
+          <div class="node-desc">Client Browser (Asanak Local)</div>
+        </div>
+        <div class="node domain">
+          <div class="node-title">custom-client.com</div>
+          <div class="node-desc">White-label Enterprise Domain</div>
+        </div>
+      </div>
+
+      <div class="connector-down">▼ [HTTP Host: {domain}]</div>
+
+      <!-- Edge Traefik -->
+      <div class="flow-row">
+        <div class="node traefik" style="width: 80%;">
+          <div class="node-title">Traefik Edge Router (Ingress :8090)</div>
+          <div class="node-desc">Domain Mapping Middleware &rarr; Injects [X-TENANT-ID: {TENANT_CODE}]</div>
+        </div>
+      </div>
+
+      <div class="connector-down">▼ [Internal Traffic with Injected Header]</div>
+
+      <!-- Internal Routing -->
+      <div class="flow-row">
+        <div class="node ui">
+          <div class="node-title">SPA Panel (Port 5173)</div>
+          <div class="node-desc">Loads /tenants/{tenant}/theme.css & logo.svg</div>
+        </div>
+        <div class="node bff">
+          <div class="node-title">API Gateway / BFF (Port 8080)</div>
+          <div class="node-desc">OAuth2 Client + Redis Sessions</div>
+        </div>
+        <div class="node auth">
+          <div class="node-title">Auth Server (Port 9005)</div>
+          <div class="node-desc">/auth/login + /auth/tenant-assets/*</div>
+        </div>
+      </div>
+
+      <div class="connector-down">▼ [Token Relay + Tenant ID Propagation]</div>
+
+      <!-- Downstream Resource Servers -->
+      <div class="flow-row">
+        <div class="node" style="width: 80%; border-color: #64748b;">
+          <div class="node-title">Downstream Microservices (Resource Servers)</div>
+          <div class="node-desc">User-Service (9095) &bull; Accounting Service &bull; Gateway Filters &bull; Database Schema / Tenant Isolation</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Domain Resolution Mechanism -->
+  <div class="section-title">How Domain & Tenant Resolution Works</div>
+  <p style="color: var(--text-muted); margin-bottom: 20px;">
+    In an enterprise multi-tenant architecture, clients must never be trusted to dictate tenant identity arbitrarily. Identity is resolved in layers:
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Resolution Step</th>
+        <th>Layer</th>
+        <th>Mechanism</th>
+        <th>Fallback / Security Behavior</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>1. Host Header Resolution</strong></td>
+        <td>Edge / Traefik</td>
+        <td>Evaluates <code>Host</code> header (e.g. <code>Host(`smslocal.ir`)</code>) and executes tenant middleware.</td>
+        <td>If domain is unmapped, routes to default tenant or returns HTTP 404.</td>
+      </tr>
+      <tr>
+        <td><strong>2. Header Injection</strong></td>
+        <td>Edge Middleware</td>
+        <td>Appends authoritative <code>X-TENANT-ID</code> and <code>X-Tenant-Id</code> headers before routing to BFF/Auth.</td>
+        <td>Strips any untrusted caller-provided tenant headers to prevent header injection.</td>
+      </tr>
+      <tr>
+        <td><strong>3. Internal Binding</strong></td>
+        <td>Auth / Services</td>
+        <td><code>TenantResolutionFilter</code> reads header, binds resolved tenant code/ID to thread-local <code>TenantContext</code>.</td>
+        <td>Cleared in a <code>finally</code> block to prevent thread pool leakage.</td>
+      </tr>
+      <tr>
+        <td><strong>4. Dynamic Asset Dispatch</strong></td>
+        <td>Auth / Static Server</td>
+        <td><code>TenantAssetController</code> dispatches <code>theme.css</code> and <code>logo.svg</code> based on the resolved tenant code.</td>
+        <td>Includes <code>Vary: X-TENANT-ID</code> and <code>Cache-Control: no-cache</code> to prevent cross-tenant CDN cache pollution.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- 4. Implementation Artifacts -->
+  <div class="section-title">Configuration & Code Highlights</div>
+
+  <h4 style="margin-bottom: 12px; color: var(--primary);">1. Traefik Middleware & Header Injection (traefik_dynamic.yml)</h4>
+  <pre><code><span class="hl-attr">http:</span>
+  <span class="hl-attr">middlewares:</span>
+    <span class="hl-attr">tenant-smslocal:</span>
+      <span class="hl-attr">headers:</span>
+        <span class="hl-attr">customRequestHeaders:</span>
+          <span class="hl-attr">X-Tenant-Id:</span> <span class="hl-val">"smslocal"</span>
+          <span class="hl-attr">X-TENANT-ID:</span> <span class="hl-val">"smslocal"</span>
+
+  <span class="hl-attr">routers:</span>
+    <span class="hl-attr">auth-smslocal:</span>
+      <span class="hl-attr">rule:</span> <span class="hl-val">"Host(`smslocal.ir`) && PathPrefix(`/auth`)"</span>
+      <span class="hl-attr">middlewares:</span> [<span class="hl-val">"tenant-smslocal"</span>]
+      <span class="hl-attr">service:</span> <span class="hl-val">"auth-service"</span></code></pre>
+
+  <h4 style="margin-bottom: 12px; color: var(--secondary);">2. Dynamic Tenant Asset Controller (Auth Server)</h4>
+  <pre><code><span class="hl-keyword">@GetMapping</span>(<span class="hl-val">"/tenant-assets/theme.css"</span>)
+<span class="hl-keyword">public</span> ResponseEntity&lt;Resource&gt; <span class="hl-attr">theme</span>(HttpServletRequest request) {
+    String code = resolveCode(request); <span class="hl-comment">// Resolves from X-TENANT-ID header</span>
+    Resource res = <span class="hl-keyword">new</span> ClassPathResource(<span class="hl-val">"static/resources/tenants/"</span> + code + <span class="hl-val">"/theme.css"</span>);
+    <span class="hl-keyword">return</span> ResponseEntity.ok()
+            .contentType(MediaType.valueOf(<span class="hl-val">"text/css;charset=UTF-8"</span>))
+            .header(HttpHeaders.VARY, <span class="hl-val">"X-TENANT-ID"</span>)
+            .cacheControl(CacheControl.noCache())
+            .body(res);
+}</code></pre>
+
+  <h4 style="margin-bottom: 12px; color: var(--warning);">3. Client-Side Early Theme & Logo Injection (Panel index.html)</h4>
+  <pre><code><span class="hl-comment">&lt;!-- Prevents Flash of Unstyled Content (FOUC) by executing synchronously before DOM load --&gt;</span>
+&lt;<span class="hl-keyword">script</span>&gt;
+  (<span class="hl-keyword">function</span>() {
+    <span class="hl-keyword">var</span> host = window.location.hostname.toLowerCase();
+    <span class="hl-keyword">var</span> tenant = host.includes(<span class="hl-val">"smslocal"</span>) ? <span class="hl-val">"smslocal"</span> : 
+                 (host.includes(<span class="hl-val">"asanlocal"</span>) ? <span class="hl-val">"asanlocal"</span> : <span class="hl-val">"default"</span>);
+
+    <span class="hl-keyword">var</span> link = document.createElement(<span class="hl-val">"link"</span>);
+    link.id = <span class="hl-val">"tenant-theme-css"</span>;
+    link.rel = <span class="hl-val">"stylesheet"</span>;
+    link.href = <span class="hl-val">"/tenants/"</span> + tenant + <span class="hl-val">"/theme.css"</span>;
+    document.head.appendChild(link);
+
+    window.logoUrl = <span class="hl-val">"/tenants/"</span> + tenant + <span class="hl-val">"/logo.svg"</span>;
+  })();
+&lt;/<span class="hl-keyword">script</span>&gt;</code></pre>
+
+  <!-- 5. Key Architecture Best Practices -->
+  <div class="section-title">Architectural Recommendations & Best Practices</div>
+  <div class="grid">
+    <div class="card">
+      <h3 style="color: var(--primary); margin-bottom: 8px;">1. Never Expose JWTs to Browser</h3>
+      <p>The BFF pattern guarantees that refresh tokens and access tokens stay on the server. The client gets an encrypted, HTTP-only, SameSite session cookie stored in Redis.</p>
+    </div>
+    <div class="card">
+      <h3 style="color: var(--secondary); margin-bottom: 8px;">2. HTTP Vary Header on Assets</h3>
+      <p>When the same URL (e.g. <code>/tenant-assets/logo</code>) produces different outputs based on <code>X-TENANT-ID</code>, always output <code>Vary: X-TENANT-ID</code> to prevent proxy/CDN cache collisions.</p>
+    </div>
+    <div class="card">
+      <h3 style="color: var(--accent); margin-bottom: 8px;">3. CSS Variables for Zero-Rebuild Theming</h3>
+      <p>Define theme rules via CSS custom properties (<code>--brand-primary</code>, <code>--accent</code>) so changes to colors, fonts, or borders only require editing static CSS rather than recompiling JavaScript bundles.</p>
+    </div>
+    <div class="card">
+      <h3 style="color: var(--warning); margin-bottom: 8px;">4. Fallback Safety</h3>
+      <p>Always maintain a default fallback theme and logo so unmapped domains or DNS variations gracefully display default branding instead of crashing or showing broken layout.</p>
+    </div>
+  </div>
+
+  <div class="callout">
+    <div class="callout-title">Interactive Live Status</div>
+    <p>All platform layers described above (Traefik, Auth Server, BFF Gateway, Panel Vite, User-Service, Redis, and MySQL) are actively running and bound to their respective ports. You can test live resolution on <a href="http://smslocal.ir:8090/" target="_blank" style="color: var(--primary);">smslocal.ir:8090</a> and <a href="http://asanlocal.ir:8090/" target="_blank" style="color: var(--primary);">asanlocal.ir:8090</a>.</p>
+  </div>
+
+  <footer>
+    <p>&copy; 2026 Enterprise Multi-Tenant Platform Architecture Guide &bull; Generated for Asanak / Milky-Way Ecosystem</p>
+  </footer>
+</div>
+
+</body>
+</html>

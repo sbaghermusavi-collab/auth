@@ -1,0 +1,78 @@
+spring:
+  output:
+    ansi:
+      enabled: ALWAYS
+  datasource:
+    url: ${MYSQL_AUTH_URL:jdbc:mysql://127.0.0.1:3307/auth?useUnicode=yes&characterEncoding=UTF-8&autoReconnect=true}
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:rootpassword}
+    driverClassName: com.mysql.cj.jdbc.Driver
+  rabbitmq:
+    host: ${RABBITMQ_HOST:127.0.0.1}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+  liquibase:
+    database-change-log-table: Z_LIQ_CHANGELOG
+    database-change-log-lock-table: Z_LIQ_CHANGELOG_LOCK
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.xml
+  h2:
+    console:
+      enabled: false
+  mvc:
+    view:
+      prefix: /WEB-INF/jsp/
+      suffix: .jsp
+
+logging:
+  level:
+    root: INFO
+    com.bontech.auth: DEBUG
+    org.springframework.security: DEBUG
+    com.zaxxer.hikari: WARN
+    liquibase: INFO
+app:
+  jwt:
+    secret: "01234567890123456789012345678901"
+    expiration-seconds: 3600
+  captcha:
+    url: "http://milky.peykasa.ir/api/user-service/captcha/generate"
+    validate-url: "http://milky.peykasa.ir/api/user-service/captcha/validate"
+  sms:
+    sender-api-url: "https://sms.example/send"
+    sender-api-key: "replace-with-real-key"
+    notification:
+      adapter: "logging"
+  auth:
+    otp-enabled: true
+    password-enabled: true
+    captcha-enabled: false
+    test-mode: true
+    otp-expiration-seconds: 180
+    login-inactivity-timeout-seconds: 180
+  app-root-url: ${APP_ROOT_URL:http://localhost:8090/}
+  default-tenant: "default"
+  default-tenant-config:
+    brand-name: "آسانک"
+    title: "آسانک — سامانه پیامک و ارتباطات"
+    logo-url: "/auth/tenant-assets/logo"
+    theme-tone: "dark"
+    animation-type: "orbit"
+    primary-color: "#0C747C"
+    secondary-color: "#FABD09"
+    auth-bg: "#0a3034"
+    otp-enabled: true
+    password-enabled: true
+    captcha-enabled: false
+
+server:
+  max-http-request-header-size: 100KB
+  servlet:
+    context-path: /auth
+  forward-headers-strategy: framework
+  port: ${AUTH_SERVER_PORT:9005}

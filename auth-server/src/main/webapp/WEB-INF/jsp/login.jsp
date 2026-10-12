@@ -1,0 +1,511 @@
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<html lang="fa" dir="rtl" data-tenant="${tenantCode != null ? tenantCode : 'default'}" data-auth-tone="${themeTone != null ? themeTone : 'dark'}" data-animation="${animationType != null ? animationType : 'orbit'}">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${pageTitle != null ? pageTitle : 'آسانک — ورود، ثبت‌نام'}</title>
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/resources/css/stylesLogin.css" />
+    <style>
+      :root {
+        <c:if test="${not empty primaryColor}">
+        --accent: ${primaryColor} !important;
+        --auth-c1: ${primaryColor} !important;
+        </c:if>
+        <c:if test="${not empty secondaryColor}">
+        --gold: ${secondaryColor} !important;
+        --auth-c2: ${secondaryColor} !important;
+        </c:if>
+        <c:if test="${not empty authBg}">
+        --auth-bg: ${authBg} !important;
+        </c:if>
+      }
+      .anim-canvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+        pointer-events: none;
+      }
+    </style>
+      <link rel="stylesheet" href="${pageContext.request.contextPath}/tenant-assets/theme.css" />
+  </head>
+  <body>
+    <div class="auth-root">
+      <div class="form-shell">
+        <div class="brand-logo" style="display: flex; align-items: center; gap: 12px;">
+          <img src="${pageContext.request.contextPath}/tenant-assets/logo" alt="Logo" style="height: 38px; width: auto; max-width: 140px; object-fit: contain;" onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" />
+          <span class="mark" style="display: none;">
+            <svg
+              width="21"
+              height="21"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#fff"
+              stroke-width="2.2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M4 5h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H10l-4 3v-3H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"
+              />
+              <path d="M8 9.5h8M8 12.5h5" />
+            </svg>
+          </span>
+          <span class="name">${brandName != null ? brandName : 'آسانک'}</span>
+        </div>
+
+        <div class="form-center">
+          <form class="form-card fade-up" id="form-card" onsubmit="return false;">
+            <div style="margin-bottom: 24px">
+              <c:choose>
+                <c:when test="${tenantCode == 'smslocal' || tenantCode == 'smslocal_ir'}">
+                  <div style="display:inline-block; padding: 4px 10px; background: rgba(2, 136, 209, 0.1); color: #0288D1; font-size: 11.5px; font-weight: 700; border-radius: 4px; margin-bottom: 10px;">درگاه اختصاصی وب‌سرویس و پنل</div>
+                  <h1 class="scr-title" style="text-align: right; font-size: 21px; font-weight: 800;">ورود به سامانه پیام کوتاه</h1>
+                  <p class="muted" style="margin-top: 8px; font-size: 13.5px; text-align: right;">
+                    جهت دسترسی به پنل ارسال و خطوط اختصاصی، اطلاعات خود را وارد فرمایید.
+                  </p>
+                </c:when>
+                <c:otherwise>
+                  <h1 class="scr-title center">ورود به حساب کاربری</h1>
+                  <p class="muted" style="margin-top: 9px; font-size: 14.5px; text-align: center;">
+                    حساب کاربری ندارید؟
+                    <a class="link" href="${pageContext.request.contextPath}/register">ثبت‌نام کنید</a>
+                  </p>
+                </c:otherwise>
+              </c:choose>
+            </div>
+            <div class="fld">
+              <div class="fld-row">
+                <label class="field-label">
+                  <c:choose>
+                    <c:when test="${tenantCode == 'smslocal' || tenantCode == 'smslocal_ir'}">شناسه کاربری یا شماره همراه</c:when>
+                    <c:otherwise>نام کاربری یا موبایل</c:otherwise>
+                  </c:choose>
+                </label>
+              </div>
+              <div class="fld-wrap">
+                <input
+                  class="fld-input tnum"
+                  id="f-identifier"
+                  name="username"
+                  placeholder="${tenantCode == 'smslocal' || tenantCode == 'smslocal_ir' ? 'مثال: user_sms یا ۰۹۱۲۳۴۵۶۷۸۹' : 'نام کاربری یا ۰۹۱۲…'}"
+                  autocomplete="off"
+                /><span class="lead"
+                  ><svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.9"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    style="flex-shrink: 0"
+                  >
+                    <circle cx="12" cy="8" r="4"></circle>
+                    <path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"></path></svg
+                ></span>
+              </div>
+            </div>
+            <div class="fld" id="password-field" <% if (!Boolean.TRUE.equals(request.getAttribute("passwordEnabled"))) { %>style="display:none;"<% } %>>
+              <div class="fld-row">
+                <label class="field-label">رمز عبور</label
+                ><button type="button" class="fld-link" id="forgot-pw-btn" onclick="handleForgotPassword(event)">
+                  فراموشی رمز عبور؟
+                </button>
+              </div>
+              <div class="fld-wrap">
+                <input
+                  class="fld-input"
+                  id="f-pw"
+                  name="password"
+                  type="password"
+                  placeholder="رمز عبور خود را وارد کنید"
+                /><span class="lead"
+                  ><svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.9"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    style="flex-shrink: 0"
+                  >
+                    <rect x="4" y="10" width="16" height="11" rx="2"></rect>
+                    <path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg></span
+                ><button
+                  type="button"
+                  class="fld-toggle"
+                  data-act="pw-toggle"
+                  id="pw-toggle-btn"
+                  onclick="togglePasswordVisibility()"
+                  aria-label="نمایش رمز"
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.9"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    style="flex-shrink: 0"
+                  >
+                    <path
+                      d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"
+                    ></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <label class="chk on" data-act="remember" style="margin-top: 2px"
+              ><span class="box"
+                ><svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  style="flex-shrink: 0"
+                >
+                  <path d="M20 6 9 17l-5-5"></path></svg></span
+              >مرا به خاطر بسپار</label
+            >
+            <div class="fld" id="captcha-field" <% if (!Boolean.TRUE.equals(request.getAttribute("captchaEnabled"))) { %>style="display:none;"<% } %>>
+              <label class="field-label">کد امنیتی</label>
+              <div class="captcha-row">
+                <div class="fld-wrap" dir="ltr" id="cap-wrap" style="flex: 1">
+                  <input
+                    class="fld-input tnum"
+                    id="f-captcha"
+                    placeholder="کد تصویر"
+                    maxlength="5"
+                    autocomplete="off"
+                    style="text-transform: uppercase; letter-spacing: 0.18em"
+                  /><span class="lead"
+                    ><svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.9"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      style="flex-shrink: 0"
+                    >
+                      <path
+                        d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z"
+                      ></path>
+                      <path d="M9 12l2 2 4-4"></path></svg
+                  ></span>
+                </div>
+                <div class="captcha-box">
+                  <img id="cap-img" width="187" height="65" alt="captcha" />
+                  <button
+                    type="button"
+                    class="captcha-refresh"
+                    data-act="cap-refresh"
+                    title="کد جدید"
+                    aria-label="کد جدید"
+                  >
+                    <svg
+                      width="17"
+                      height="17"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.9"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      style="flex-shrink: 0"
+                    >
+                      <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+                      <path d="M21 3v5h-5"></path>
+                      <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+                      <path d="M3 21v-5h5"></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <p class="fld-hint error" id="cap-error" style="display: none">
+                کد امنیتی نادرست است.
+              </p>
+            </div>
+            <p class="fld-hint error" id="login-error" style="display: none"></p>
+            <c:choose>
+              <c:when test="${tenantCode == 'smslocal' || tenantCode == 'smslocal_ir'}">
+                <button
+                  type="submit"
+                  class="btn btn-primary btn-block"
+                  id="primary"
+                  style="height: 48px; margin-top: 22px; font-weight: 700; letter-spacing: 0.02em;"
+                >
+                  تایید و ورود به پنل پیامکی
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </button>
+                <% if (Boolean.TRUE.equals(request.getAttribute("otpEnabled"))) { %>
+                <div class="or-div" style="margin: 16px 0; font-size: 12px; color: #94a3b8;">روش‌های جایگزین احراز هویت</div>
+                <button
+                  type="button"
+                  class="btn btn-outline btn-block"
+                  id="otp-login"
+                  style="height: 46px; border-color: #cbd5e1; color: #0288D1; font-weight: 600;"
+                >
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M5 4h4l2 5-3 2a12 12 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"></path></svg>
+                  درخواست رمز یک‌بارمصرف (پیامک OTP)
+                </button>
+                <% } %>
+                <div style="margin-top: 22px; padding: 12px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 6px; text-align: center; font-size: 13px;">
+                  حساب شرکتی ندارید؟
+                  <a href="${pageContext.request.contextPath}/register" style="color: #0288D1; font-weight: 700; margin-right: 4px; text-decoration: underline;">ثبت‌نام و تخصیص خط</a>
+                </div>
+              </c:when>
+              <c:otherwise>
+                <button
+                  type="submit"
+                  class="btn btn-primary btn-block"
+                  id="primary"
+                  style="height: 48px; margin-top: 22px"
+                >
+                  ورود به حساب
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M19 12H5"></path><path d="m12 19-7-7 7-7"></path></svg>
+                </button>
+                <% if (Boolean.TRUE.equals(request.getAttribute("otpEnabled"))) { %>
+                <div class="or-div">یا</div>
+                <button
+                  type="button"
+                  class="btn btn-outline btn-block"
+                  id="otp-login"
+                  style="height: 46px"
+                >
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M5 4h4l2 5-3 2a12 12 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"></path></svg>
+                  ورود با کد یک‌بارمصرف
+                </button>
+                <% } %>
+              </c:otherwise>
+            </c:choose>
+            <p class="note" style="margin-top: 22px; line-height: 2">
+              با ورود،
+              <a class="link" style="font-weight: 600">قوانین و مقررات</a> و
+              <a class="link" style="font-weight: 600">حریم خصوصی</a> را
+              می&zwnj;پذیرید.
+            </p>
+          </form>
+        </div>
+      </div>
+
+      <!-- پنل برند و انیمیشن مشترک سمت چپ -->
+      <jsp:include page="/WEB-INF/jsp/common/auth-aside.jsp" />
+    </div>
+
+    <script src="${pageContext.request.contextPath}/resources/js/app.js"></script>
+
+<script>
+let currentCaptchaId = '';
+
+async function loadCaptcha() {
+    const capField = document.getElementById('captcha-field');
+    if (capField && (capField.style.display === 'none' || getComputedStyle(capField).display === 'none')) {
+        return;
+    }
+    const captchaUrl = "${captchaUrl}";
+    if (!captchaUrl) return;
+    try {
+        const response = await fetch(captchaUrl);
+        if (response.ok) {
+            currentCaptchaId = response.headers.get('X-Captcha-Id') || '';
+            const blob = await response.blob();
+            const imgUrl = URL.createObjectURL(blob);
+            const imgEl = document.getElementById('cap-img');
+            if (imgEl) {
+                imgEl.src = imgUrl;
+            }
+        }
+    } catch (err) {
+        console.error('Failed to load captcha', err);
+    }
+}
+
+const serverAppRoot = '${not empty appRootUrl ? appRootUrl : "/"}';
+const defaultAppRoot = (serverAppRoot.includes("localhost") && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1")
+    ? (window.location.origin + "/")
+    : serverAppRoot;
+
+function safeContinueUrl(target) {
+    if (!target || target === '/success' || target.includes('/api/auth/') || target.endsWith('/login') || target.includes('/login?')) return defaultAppRoot;
+    try {
+        const url = new URL(target, window.location.origin);
+        if (url.pathname.includes('/api/auth/') || url.pathname.endsWith('/login')) {
+            return defaultAppRoot;
+        }
+        if (url.protocol === 'http:' || url.protocol === 'https:') {
+            if (url.hostname === 'localhost' && window.location.hostname !== 'localhost') {
+                url.hostname = window.location.hostname;
+                url.port = window.location.port;
+            }
+            return url.href;
+        }
+        return url.pathname + url.search + url.hash;
+    } catch (err) {
+        return defaultAppRoot;
+    }
+}
+
+function getContinueUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const target = params.get('continue') || params.get('next');
+    return safeContinueUrl(target);
+}
+
+function togglePasswordVisibility() {
+    const pw = document.getElementById('f-pw');
+    if (pw) {
+        pw.type = pw.type === 'password' ? 'text' : 'password';
+    }
+}
+
+function handleForgotPassword(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const currentContinue = getContinueUrl();
+    const targetUrl = '/forgot-password' + (currentContinue && currentContinue !== '/success' ? '?continue=' + encodeURIComponent(currentContinue) : '');
+    window.location.href = targetUrl;
+}
+
+function initPage() {
+    loadCaptcha();
+    const refreshBtn = document.querySelector('[data-act="cap-refresh"]');
+    if (refreshBtn) {
+        refreshBtn.onclick = loadCaptcha;
+    }
+    const continueUrl = getContinueUrl();
+    const registerLink = document.querySelector('a[href="${pageContext.request.contextPath}/register"]');
+    if (registerLink && continueUrl && continueUrl !== '/success') {
+        registerLink.href = '${pageContext.request.contextPath}/register?continue=' + encodeURIComponent(continueUrl);
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPage);
+} else {
+    initPage();
+}
+
+document.getElementById('otp-login')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('password-field').style.display = 'none';
+    document.getElementById('primary').click();
+});
+
+async function readError(response) {
+    try {
+        const data = await response.json();
+        return data.message || data.error || response.statusText;
+    } catch (err) {
+        return response.statusText;
+    }
+}
+
+document.getElementById('form-card').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const errorEl = document.getElementById('login-error');
+    const submitBtn = document.getElementById('primary');
+    const identifier = document.getElementById('f-identifier').value.trim();
+    const passwordField = document.getElementById('f-pw');
+    const captchaField = document.getElementById('f-captcha');
+
+    errorEl.style.display = 'none';
+    submitBtn.disabled = true;
+
+    try {
+        const response = await fetch('${pageContext.request.contextPath}/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                identifier,
+                password: passwordField ? passwordField.value : '',
+                captchaId: currentCaptchaId,
+                captchaToken: captchaField ? captchaField.value : ''
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(await readError(response));
+        }
+
+        const data = await response.json();
+        const continueUrl = getContinueUrl();
+
+        if (data.status === 'SUCCESS' && data.accessToken) {
+            window.location.href = safeContinueUrl(data.redirectUrl || continueUrl);
+            return;
+        }
+
+        if (data.status === 'PASSWORD_CHANGE_REQUIRED') {
+            const pwParams = new URLSearchParams({ identifier, authSessionId: data.authSessionId || '', continue: continueUrl });
+            window.location.href = '${pageContext.request.contextPath}/password-change?' + pwParams.toString();
+            return;
+        }
+
+        if (data.status === 'NEED_DELIVERY_METHOD') {
+            const maskedPhone = data.candidates && data.candidates.length > 0 ? data.candidates[0].phone : identifier;
+            const params = new URLSearchParams({
+                identifier,
+                authSessionId: data.authSessionId || '',
+                phone: maskedPhone,
+                continue: continueUrl
+            });
+            window.location.href = '${pageContext.request.contextPath}/method?' + params.toString();
+            return;
+        }
+
+        if (data.status === 'OTP_SENT') {
+            const maskedPhone = data.candidates && data.candidates.length > 0 ? data.candidates[0].phone : identifier;
+            const params = new URLSearchParams({
+                identifier,
+                authSessionId: data.authSessionId || '',
+                phone: maskedPhone,
+                continue: continueUrl
+            });
+            window.location.href = '${pageContext.request.contextPath}/otp?' + params.toString();
+            return;
+        }
+
+        throw new Error(data.message || 'Login could not continue');
+    } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.style.display = 'block';
+        submitBtn.disabled = false;
+        loadCaptcha();
+}});
+
+(function() {
+    const timeoutSeconds = ${loginInactivityTimeoutSeconds != null ? loginInactivityTimeoutSeconds : 180};
+    let idleTimer;
+    function resetTimer() {
+        clearTimeout(idleTimer);
+        idleTimer = setTimeout(() => {
+            alert('نشست شما به دلیل عدم فعالیت منقضی شد.');
+            window.location.href = '${pageContext.request.contextPath}/login?expired=true';
+        }, timeoutSeconds * 1000);
+    }
+    ['mousemove', 'keydown', 'click', 'touchstart'].forEach(evt => {
+        window.addEventListener(evt, resetTimer);
+    });
+    resetTimer();
+})();</script>
+
+    <jsp:include page="/WEB-INF/jsp/common/auth-animation.jsp" />
+
+  </body>
+</html>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="010-add-tenant-branding-and-metadata-columns" author="seyyed">
+        <addColumn tableName="tenants">
+            <column name="description" type="varchar(500)"/>
+            <column name="logo_url" type="varchar(500)"/>
+            <column name="favicon_url" type="varchar(500)"/>
+            <column name="primary_color" type="varchar(32)" defaultValue="#2563eb"/>
+            <column name="secondary_color" type="varchar(32)" defaultValue="#1e40af"/>
+            <column name="active_modules" type="varchar(1000)" defaultValue="phonebook,sms,reports,webservice"/>
+            <column name="theme_config" type="text"/>
+            <column name="active" type="boolean" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="admin_username" type="varchar(100)"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

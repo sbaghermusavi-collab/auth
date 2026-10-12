@@ -1,0 +1,260 @@
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<!DOCTYPE html>
+<html lang="fa" dir="rtl" data-auth-tone="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>آسانک — کد تأیید</title>
+  <link rel="stylesheet" href="${pageContext.request.contextPath}/resources/css/stylesLogin.css" />
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/tenant-assets/theme.css" />
+  </head>
+<body>
+
+<div class="auth-root">
+  <div class="form-shell">
+    <div class="brand-logo">
+      <span class="mark">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 5h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H10l-4 3v-3H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />
+          <path d="M8 9.5h8M8 12.5h5" />
+        </svg>
+      </span>
+      <span class="name">آسانک</span>
+    </div>    
+    <div class="form-center">
+      <div class="form-card">
+        <a href="${pageContext.request.contextPath}/login" class="btn btn-ghost btn-sm">← تغییر شماره</a>
+        <h1 class="scr-title">کد تأیید را وارد کنید</h1>
+        <p class="scr-sub">کد به شماره <strong id="phone-show"></strong> ارسال شد.</p>
+
+        <form action="${pageContext.request.contextPath}/api/auth/otp/verify" method="post">
+          <input type="hidden" name="identifier" id="identifier-hidden">
+          <input type="hidden" name="authSessionId" id="authSessionId-hidden">
+          <input type="hidden" name="phone" id="phone-hidden">
+          
+          <div class="otp-inputs" dir="ltr">
+            <input class="otp-cell" maxlength="1" name="c1" required>
+            <input class="otp-cell" maxlength="1" name="c2" required>
+            <input class="otp-cell" maxlength="1" name="c3" required>
+            <input class="otp-cell" maxlength="1" name="c4" required>
+            <input class="otp-cell" maxlength="1" name="c5" required>
+            <input class="otp-cell" maxlength="1" name="c6" required>
+          </div>
+
+          <div style="margin-top: 18px; text-align: center;">
+            <p id="timer-box" style="font-size: 14px; color: var(--text-muted); margin-bottom: 8px;">
+              زمان باقی‌مانده تا ارسال مجدد: <strong id="countdown" style="color: #0C747C; font-family: monospace; font-size: 16px;">03:00</strong>
+            </p>
+            <button type="button" id="resend-btn" class="btn btn-outline" style="display: none; margin: 0 auto; height: 38px; font-size: 13.5px;" disabled>
+              ارسال مجدد کد تأیید
+            </button>
+          </div>
+
+          <p class="fld-hint error" id="otp-error" style="display: none; margin-top: 12px;"></p>
+          <button type="submit" class="btn btn-primary btn-block" style="margin-top: 20px;">تأیید و ورود</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  
+  <jsp:include page="/WEB-INF/jsp/common/auth-aside.jsp" />
+</div>
+<jsp:include page="/WEB-INF/jsp/common/auth-animation.jsp" />
+
+<script>
+const params = new URLSearchParams(location.search);
+const identifier = params.get('identifier') || params.get('phone') || '';
+const authSessionId = params.get('authSessionId') || '';
+if (!authSessionId) {
+    window.location.href = '${pageContext.request.contextPath}/login';
+}
+const phone = params.get('phone') || identifier;
+
+document.getElementById('phone-show').textContent = phone;
+document.getElementById('phone-hidden').value = phone;
+document.getElementById('authSessionId-hidden').value = authSessionId;
+document.getElementById('identifier-hidden').value = identifier;
+const serverAppRoot = '${not empty appRootUrl ? appRootUrl : "/"}';
+const defaultAppRoot = (serverAppRoot.includes("localhost") && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1")
+    ? (window.location.origin + "/")
+    : serverAppRoot;
+
+function safeContinueUrl(target) {
+    if (!target || target === '/success' || target.includes('/api/auth/') || target.endsWith('/login') || target.includes('/login?')) return defaultAppRoot;
+    try {
+        const url = new URL(target, window.location.origin);
+        if (url.pathname.includes('/api/auth/') || url.pathname.endsWith('/login')) {
+            return defaultAppRoot;
+        }
+        if (url.protocol === 'http:' || url.protocol === 'https:') {
+            if (url.hostname === 'localhost' && window.location.hostname !== 'localhost') {
+                url.hostname = window.location.hostname;
+                url.port = window.location.port;
+            }
+            return url.href;
+        }
+        return url.pathname + url.search + url.hash;
+    } catch (err) {
+        return defaultAppRoot;
+    }
+}
+
+const continueUrl = safeContinueUrl(params.get('continue') || params.get('next'));
+
+const cells = Array.from(document.querySelectorAll('.otp-cell'));
+cells.forEach((cell, idx) => {
+    cell.addEventListener('input', (e) => {
+        const val = e.target.value;
+        if (val.length === 1 && idx < cells.length - 1) {
+            cells[idx + 1].focus();
+        }
+    });
+
+    cell.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && !cell.value && idx > 0) {
+            cells[idx - 1].focus();
+        }
+    });
+
+    cell.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const pasteData = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
+        if (!pasteData) return;
+        for (let i = 0; i < cells.length; i++) {
+            if (i < pasteData.length) {
+                cells[i].value = pasteData[i];
+            }
+        }
+        const focusIdx = Math.min(pasteData.length, cells.length) - 1;
+        if (focusIdx >= 0) {
+            cells[focusIdx].focus();
+        }
+    });
+});
+
+async function readError(response) {
+    try {
+        const data = await response.json();
+        return data.message || data.error || response.statusText;
+    } catch (err) {
+        return response.statusText;
+    }
+}
+
+const otpExpirationSeconds = ${otpExpirationSeconds != null ? otpExpirationSeconds : 180};
+let timerInterval;
+let remainingSeconds = otpExpirationSeconds;
+
+function startCountdown() {
+    remainingSeconds = otpExpirationSeconds;
+    document.getElementById('resend-btn').style.display = 'none';
+    document.getElementById('resend-btn').disabled = true;
+    document.getElementById('timer-box').style.display = 'block';
+
+    updateTimerDisplay();
+    clearInterval(timerInterval);
+
+    timerInterval = setInterval(() => {
+        remainingSeconds--;
+        updateTimerDisplay();
+        if (remainingSeconds <= 0) {
+            clearInterval(timerInterval);
+            document.getElementById('timer-box').style.display = 'none';
+            document.getElementById('resend-btn').style.display = 'block';
+            document.getElementById('resend-btn').disabled = false;
+        }
+    }, 1000);
+}
+
+function updateTimerDisplay() {
+    const mins = Math.floor(Math.max(0, remainingSeconds) / 60);
+    const secs = Math.max(0, remainingSeconds) % 60;
+    const formatted = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+    const el = document.getElementById('countdown');
+    if (el) el.textContent = formatted;
+}
+
+startCountdown();
+
+document.getElementById('resend-btn').addEventListener('click', async () => {
+    const errorEl = document.getElementById('otp-error');
+    const resendBtn = document.getElementById('resend-btn');
+    resendBtn.disabled = true;
+    errorEl.style.display = 'none';
+
+    const deliveryMethod = params.get('delivery') || 'sms';
+
+    try {
+        const res = await fetch('${pageContext.request.contextPath}/api/auth/resend-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ authSessionId, phone, deliveryMethod })
+        });
+
+        if (res.ok) {
+            startCountdown();
+            alert('کد تأیید جدید ارسال شد.');
+        } else {
+            errorEl.textContent = await readError(res);
+            errorEl.style.display = 'block';
+            resendBtn.disabled = false;
+        }
+    } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.style.display = 'block';
+        resendBtn.disabled = false;
+    }
+});
+
+document.querySelector('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorEl = document.getElementById('otp-error');
+    const code = Array.from(document.querySelectorAll('.otp-cell')).map(input => input.value).join('');
+    errorEl.style.display = 'none';
+
+    try {
+        const res = await fetch('${pageContext.request.contextPath}/api/auth/otp/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ authSessionId, code })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            const rawContinue = params.get('continue') || params.get('next') || '';
+            if (data.accessToken === 'PASSWORD_CHANGE_REQUIRED' || rawContinue.includes('/password-change') || continueUrl.includes('/password-change')) {
+                const targetUrl = (rawContinue && rawContinue.includes('/password-change')) ? rawContinue : (continueUrl && continueUrl.includes('/password-change') ? continueUrl : '/password-change?reset=true&identifier=' + encodeURIComponent(identifier));
+                window.location.href = safeContinueUrl(targetUrl);
+                return;
+            }
+            window.location.href = safeContinueUrl((continueUrl && continueUrl !== '/success') ? continueUrl : (data.redirectUrl || defaultAppRoot));
+        } else {
+            errorEl.textContent = await readError(res);
+            errorEl.style.display = 'block';
+        }
+    } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.style.display = 'block';
+    }
+});
+
+(function() {
+    const timeoutSeconds = ${loginInactivityTimeoutSeconds != null ? loginInactivityTimeoutSeconds : 180};
+    let idleTimer;
+    function resetTimer() {
+        clearTimeout(idleTimer);
+        idleTimer = setTimeout(() => {
+            alert('نشست شما به دلیل عدم فعالیت منقضی شد.');
+            window.location.href = '${pageContext.request.contextPath}/login?expired=true';
+        }, timeoutSeconds * 1000);
+    }
+    ['mousemove', 'keydown', 'click', 'touchstart'].forEach(evt => {
+        window.addEventListener(evt, resetTimer);
+    });
+    resetTimer();
+})();
+</script>
+</body>
+
+<script src="${pageContext.request.contextPath}/resources/js/app.js"></script>
+</html>

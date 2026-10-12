@@ -1,0 +1,274 @@
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<!doctype html>
+<html lang="fa" dir="rtl" data-auth-tone="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>آسانک — بازیابی رمز عبور</title>
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/resources/css/stylesLogin.css" />
+      <link rel="stylesheet" href="${pageContext.request.contextPath}/tenant-assets/theme.css" />
+  </head>
+  <body>
+    <div class="auth-root">
+      <div class="form-shell">
+        <div class="brand-logo" style="display: flex; align-items: center; gap: 12px;">
+          <img src="${pageContext.request.contextPath}/tenant-assets/logo" alt="Logo" style="height: 38px; width: auto; max-width: 140px; object-fit: contain;" onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" />
+          <span class="mark" style="display: none;">
+            <svg
+              width="21"
+              height="21"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#fff"
+              stroke-width="2.2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M4 5h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H10l-4 3v-3H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"
+              />
+              <path d="M8 9.5h8M8 12.5h5" />
+            </svg>
+          </span>
+          <span class="name">آسانک</span>
+        </div>
+
+        <div class="form-center">
+          <div class="form-card fade-up" id="form-card">
+            <a href="${pageContext.request.contextPath}/login" class="btn btn-ghost btn-sm" id="back-link" style="margin-bottom: 12px; display: inline-flex;">← بازگشت به ورود</a>
+            <div style="margin-bottom: 24px">
+              <h1 class="scr-title">بازیابی رمز عبور</h1>
+              <p class="muted" style="margin-top: 9px; font-size: 14.5px;">
+                نام کاربری یا شماره موبایل حساب خود را وارد کنید.
+              </p>
+            </div>
+
+            <form id="forgot-form">
+              <div class="fld">
+                <div class="fld-row">
+                  <label class="field-label">نام کاربری یا موبایل</label>
+                </div>
+                <div class="fld-wrap">
+                  <input
+                    class="fld-input tnum"
+                    id="f-identifier"
+                    placeholder="نام کاربری یا ۰۹۱۲…"
+                    autocomplete="off"
+                    required
+                  /><span class="lead"
+                    ><svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.9"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      style="flex-shrink: 0"
+                    >
+                      <circle cx="12" cy="8" r="4"></circle>
+                      <path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"></path></svg
+                  ></span>
+                </div>
+              </div>
+
+              <div class="fld" id="captcha-field" <% if (!Boolean.TRUE.equals(request.getAttribute("captchaEnabled"))) { %>style="display:none;"<% } %>>
+                <label class="field-label">کد امنیتی</label>
+                <div class="captcha-row">
+                  <div class="fld-wrap" dir="ltr" id="cap-wrap" style="flex: 1">
+                    <input
+                      class="fld-input tnum"
+                      id="f-captcha"
+                      placeholder="کد تصویر"
+                      maxlength="5"
+                      autocomplete="off"
+                      style="text-transform: uppercase; letter-spacing: 0.18em"
+                    /><span class="lead"
+                      ><svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.9"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        style="flex-shrink: 0"
+                      >
+                        <path
+                          d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z"
+                        ></path>
+                        <path d="M9 12l2 2 4-4"></path></svg
+                    ></span>
+                  </div>
+                  <div class="captcha-box">
+                    <img id="cap-img" width="187" height="65" alt="captcha" />
+                    <button
+                      type="button"
+                      class="captcha-refresh"
+                      data-act="cap-refresh"
+                      title="کد جدید"
+                      aria-label="کد جدید"
+                    >
+                      <svg
+                        width="17"
+                        height="17"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.9"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        style="flex-shrink: 0"
+                      >
+                        <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+                        <path d="M21 3v5h-5"></path>
+                        <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+                        <path d="M3 21v-5h5"></path>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <p class="fld-hint error" id="forgot-error" style="display: none"></p>
+
+              <button
+                type="submit"
+                class="btn btn-primary btn-block"
+                id="primary"
+                style="height: 48px; margin-top: 22px"
+              >
+                ادامه و دریافت کد تأیید<svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  style="flex-shrink: 0"
+                >
+                  <path d="M19 12H5"></path>
+                  <path d="m12 19-7-7 7-7"></path>
+                </svg>
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <jsp:include page="/WEB-INF/jsp/common/auth-aside.jsp" />
+    </div>
+
+    <script src="${pageContext.request.contextPath}/resources/js/app.js"></script>
+    <jsp:include page="/WEB-INF/jsp/common/auth-animation.jsp" />
+    <script>
+    let currentCaptchaId = '';
+    const serverAppRoot = '${not empty appRootUrl ? appRootUrl : "/"}';
+    const defaultAppRoot = (serverAppRoot.includes("localhost") && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1")
+        ? (window.location.origin + "/")
+        : serverAppRoot;
+
+    function safeContinueUrl(target) {
+        if (!target || target === '/success') return defaultAppRoot;
+        try {
+            const url = new URL(target, window.location.origin);
+            if (url.protocol === 'http:' || url.protocol === 'https:') {
+                if (url.hostname === 'localhost' && window.location.hostname !== 'localhost') {
+                    url.hostname = window.location.hostname;
+                    url.port = window.location.port;
+                }
+                return url.href;
+            }
+            return url.pathname + url.search + url.hash;
+        } catch (err) {
+            return target || defaultAppRoot;
+        }
+    }
+
+    function getContinueUrl() {
+        const params = new URLSearchParams(window.location.search);
+        const target = params.get('continue') || params.get('next');
+        return safeContinueUrl(target);
+    }
+
+    async function loadCaptcha() {
+        const captchaUrl = "${captchaUrl}";
+        if (!captchaUrl) return;
+        try {
+            const response = await fetch(captchaUrl);
+            if (response.ok) {
+                currentCaptchaId = response.headers.get('X-Captcha-Id') || '';
+                const blob = await response.blob();
+                const imgUrl = URL.createObjectURL(blob);
+                const imgEl = document.getElementById('cap-img');
+                if (imgEl) imgEl.src = imgUrl;
+            }
+        } catch (err) {
+            console.error('Failed to load captcha', err);
+        }
+    }
+
+    function initPage() {
+        loadCaptcha();
+        const refreshBtn = document.querySelector('[data-act="cap-refresh"]');
+        if (refreshBtn) {
+            refreshBtn.onclick = loadCaptcha;
+        }
+        const continueUrl = getContinueUrl();
+        const backLink = document.getElementById('back-link');
+        if (backLink && continueUrl && continueUrl !== '/success') {
+            backLink.href = '/login?continue=' + encodeURIComponent(continueUrl);
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initPage);
+    } else {
+        initPage();
+    }
+
+    document.getElementById('forgot-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const errorEl = document.getElementById('forgot-error');
+        const submitBtn = document.getElementById('primary');
+        const identifierInput = document.getElementById('f-identifier');
+        const identifier = identifierInput ? identifierInput.value.trim() : '';
+
+        errorEl.style.display = 'none';
+        if (!identifier) {
+            errorEl.textContent = 'لطفاً نام کاربری یا شماره موبایل خود را وارد کنید.';
+            errorEl.style.display = 'block';
+            return;
+        }
+
+        submitBtn.disabled = true;
+
+        const isCaptchaEnabled = ${captchaEnabled != null ? captchaEnabled : false};
+        if (isCaptchaEnabled) {
+            const captchaInput = document.getElementById('f-captcha');
+            const captchaToken = captchaInput ? captchaInput.value.trim() : '';
+            if (!captchaToken) {
+                errorEl.textContent = 'لطفاً کد امنیتی را وارد کنید.';
+                errorEl.style.display = 'block';
+                submitBtn.disabled = false;
+                return;
+            }
+        }
+
+        const currentContinue = getContinueUrl();
+        const pwChangeContinue = '/password-change?reset=true&identifier=' + encodeURIComponent(identifier) + '&continue=' + encodeURIComponent(currentContinue);
+        const params = new URLSearchParams({
+            identifier: identifier,
+            phone: identifier,
+            continue: pwChangeContinue
+        });
+
+        window.location.href = '${pageContext.request.contextPath}/method?' + params.toString();
+    });
+    </script>
+  </body>
+</html>

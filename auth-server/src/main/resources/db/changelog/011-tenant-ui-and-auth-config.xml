@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="011-add-tenant-ui-and-auth-config-columns" author="seyyed">
+        <addColumn tableName="tenants">
+            <column name="title" type="varchar(255)"/>
+            <column name="theme_tone" type="varchar(32)" defaultValue="dark"/>
+            <column name="animation_type" type="varchar(32)" defaultValue="orbit"/>
+            <column name="auth_bg" type="varchar(64)" defaultValue="#072b2f"/>
+            <column name="otp_enabled" type="boolean" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="password_enabled" type="boolean" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="captcha_enabled" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="011-update-default-tenant-branding" author="seyyed">
+        <update tableName="tenants">
+            <column name="name" value="آسانک"/>
+            <column name="title" value="سامانه آسانک — پنل ارتباط یکپارچه"/>
+            <column name="theme_tone" value="dark"/>
+            <column name="animation_type" value="orbit"/>
+            <column name="primary_color" value="#0C747C"/>
+            <column name="secondary_color" value="#FABD09"/>
+            <column name="auth_bg" value="#072b2f"/>
+            <column name="otp_enabled" valueBoolean="true"/>
+            <column name="password_enabled" valueBoolean="true"/>
+            <column name="captcha_enabled" valueBoolean="false"/>
+            <where>code = 'default'</where>
+        </update>
+    </changeSet>
+
+<!--    <changeSet id="011-seed-existing-configured-tenants" author="seyyed">-->
+<!--        &lt;!&ndash; sms-ir &ndash;&gt;-->
+<!--        <insert tableName="tenants">-->
+<!--            <column name="code" value="sms-ir"/>-->
+<!--            <column name="name" value="ایده پردازان (SMS.ir)"/>-->
+<!--            <column name="title" value="سامانه پیامکی SMS.ir — ورود هوشمند"/>-->
+<!--            <column name="base_url" value="http://sms-ir.local"/>-->
+<!--            <column name="theme_tone" value="dark"/>-->
+<!--            <column name="animation_type" value="matrix"/>-->
+<!--            <column name="primary_color" value="#6366F1"/>-->
+<!--            <column name="secondary_color" value="#EC4899"/>-->
+<!--            <column name="auth_bg" value="#111827"/>-->
+<!--            <column name="otp_enabled" valueBoolean="true"/>-->
+<!--            <column name="password_enabled" valueBoolean="true"/>-->
+<!--            <column name="captcha_enabled" valueBoolean="false"/>-->
+<!--            <column name="active" valueBoolean="true"/>-->
+<!--            <column name="created_at" valueComputed="CURRENT_TIMESTAMP"/>-->
+<!--            <column name="updated_at" valueComputed="CURRENT_TIMESTAMP"/>-->
+<!--            <column name="created_by" value="liquibase"/>-->
+<!--            <column name="updated_by" value="liquibase"/>-->
+<!--            <column name="version" valueNumeric="0"/>-->
+<!--        </insert>-->
+
+<!--        &lt;!&ndash; smslocal &ndash;&gt;-->
+<!--        <insert tableName="tenants">-->
+<!--            <column name="code" value="smslocal"/>-->
+<!--            <column name="name" value="SMS Local"/>-->
+<!--            <column name="title" value="سامانه اختصاصی پیام کوتاه (SMS Local)"/>-->
+<!--            <column name="base_url" value="http://smslocal.local"/>-->
+<!--            <column name="theme_tone" value="light"/>-->
+<!--            <column name="animation_type" value="waves"/>-->
+<!--            <column name="primary_color" value="#0288D1"/>-->
+<!--            <column name="secondary_color" value="#00BCD4"/>-->
+<!--            <column name="auth_bg" value="#0b1e28"/>-->
+<!--            <column name="otp_enabled" valueBoolean="true"/>-->
+<!--            <column name="password_enabled" valueBoolean="true"/>-->
+<!--            <column name="captcha_enabled" valueBoolean="false"/>-->
+<!--            <column name="active" valueBoolean="true"/>-->
+<!--            <column name="created_at" valueComputed="CURRENT_TIMESTAMP"/>-->
+<!--            <column name="updated_at" valueComputed="CURRENT_TIMESTAMP"/>-->
+<!--            <column name="created_by" value="liquibase"/>-->
+<!--            <column name="updated_by" value="liquibase"/>-->
+<!--            <column name="version" valueNumeric="0"/>-->
+<!--        </insert>-->
+
+<!--        &lt;!&ndash; smslocal_ir &ndash;&gt;-->
+<!--        <insert tableName="tenants">-->
+<!--            <column name="code" value="smslocal_ir"/>-->
+<!--            <column name="name" value="SMS Local"/>-->
+<!--            <column name="title" value="سامانه اختصاصی پیام کوتاه (SMS Local)"/>-->
+<!--            <column name="base_url" value="http://smslocal.ir"/>-->
+<!--            <column name="theme_tone" value="light"/>-->
+<!--            <column name="animation_type" value="waves"/>-->
+<!--            <column name="primary_color" value="#0288D1"/>-->
+<!--            <column name="secondary_color" value="#00BCD4"/>-->
+<!--            <column name="auth_bg" value="#0b1e28"/>-->
+<!--            <column name="otp_enabled" valueBoolean="true"/>-->
+<!--            <column name="password_enabled" valueBoolean="true"/>-->
+<!--            <column name="captcha_enabled" valueBoolean="false"/>-->
+<!--            <column name="active" valueBoolean="true"/>-->
+<!--            <column name="created_at" valueComputed="CURRENT_TIMESTAMP"/>-->
+<!--            <column name="updated_at" valueComputed="CURRENT_TIMESTAMP"/>-->
+<!--            <column name="created_by" value="liquibase"/>-->
+<!--            <column name="updated_by" value="liquibase"/>-->
+<!--            <column name="version" valueNumeric="0"/>-->
+<!--        </insert>-->
+
+<!--        &lt;!&ndash; asanlocal &ndash;&gt;-->
+<!--        <insert tableName="tenants">-->
+<!--            <column name="code" value="asanlocal"/>-->
+<!--            <column name="name" value="آسانک لوکال"/>-->
+<!--            <column name="title" value="سامانه آسان لوکال — ارتباطات و پیامک"/>-->
+<!--            <column name="base_url" value="http://asanlocal.local"/>-->
+<!--            <column name="theme_tone" value="dark"/>-->
+<!--            <column name="animation_type" value="orbit"/>-->
+<!--            <column name="primary_color" value="#2E7D32"/>-->
+<!--            <column name="secondary_color" value="#81C784"/>-->
+<!--            <column name="auth_bg" value="#0d2314"/>-->
+<!--            <column name="otp_enabled" valueBoolean="true"/>-->
+<!--            <column name="password_enabled" valueBoolean="true"/>-->
+<!--            <column name="captcha_enabled" valueBoolean="false"/>-->
+<!--            <column name="active" valueBoolean="true"/>-->
+<!--            <column name="created_at" valueComputed="CURRENT_TIMESTAMP"/>-->
+<!--            <column name="updated_at" valueComputed="CURRENT_TIMESTAMP"/>-->
+<!--            <column name="created_by" value="liquibase"/>-->
+<!--            <column name="updated_by" value="liquibase"/>-->
+<!--            <column name="version" valueNumeric="0"/>-->
+<!--        </insert>-->
+
+<!--        &lt;!&ndash; asanlocal_ir &ndash;&gt;-->
+<!--        <insert tableName="tenants">-->
+<!--            <column name="code" value="asanlocal_ir"/>-->
+<!--            <column name="name" value="آسانک لوکال"/>-->
+<!--            <column name="title" value="سامانه آسان لوکال — ارتباطات و پیامک"/>-->
+<!--            <column name="base_url" value="http://asanlocal.ir"/>-->
+<!--            <column name="theme_tone" value="dark"/>-->
+<!--            <column name="animation_type" value="orbit"/>-->
+<!--            <column name="primary_color" value="#2E7D32"/>-->
+<!--            <column name="secondary_color" value="#81C784"/>-->
+<!--            <column name="auth_bg" value="#0d2314"/>-->
+<!--            <column name="otp_enabled" valueBoolean="true"/>-->
+<!--            <column name="password_enabled" valueBoolean="true"/>-->
+<!--            <column name="captcha_enabled" valueBoolean="false"/>-->
+<!--            <column name="active" valueBoolean="true"/>-->
+<!--            <column name="created_at" valueComputed="CURRENT_TIMESTAMP"/>-->
+<!--            <column name="updated_at" valueComputed="CURRENT_TIMESTAMP"/>-->
+<!--            <column name="created_by" value="liquibase"/>-->
+<!--            <column name="updated_by" value="liquibase"/>-->
+<!--            <column name="version" valueNumeric="0"/>-->
+<!--        </insert>-->
+<!--    </changeSet>-->
+
+</databaseChangeLog>

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" width="200" height="60">
+  <defs>
+    <linearGradient id="grad-asan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2E7D32" />
+      <stop offset="100%" stop-color="#81C784" />
+    </linearGradient>
+  </defs>
+  <rect width="200" height="60" rx="12" fill="url(#grad-asan)"/>
+  <polygon points="32,15 45,42 19,42" fill="#ffffff" opacity="0.95"/>
+  <circle cx="32" cy="33" r="5" fill="#2E7D32"/>
+  <text x="56" y="38" font-family="system-ui, sans-serif" font-size="18" font-weight="bold" fill="#ffffff">ASAN LOCAL</text>
+</svg>

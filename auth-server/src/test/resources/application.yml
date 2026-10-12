@@ -1,0 +1,31 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=LEGACY;NON_KEYWORDS=SYSTEM_USER
+    driverClassName: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+    database-platform: org.hibernate.dialect.H2Dialect
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.xml
+  h2:
+    console:
+      enabled: true
+  mvc:
+    view:
+      prefix: /WEB-INF/jsp/
+      suffix: .jsp
+app:
+  jwt:
+    secret: "01234567890123456789012345678901"
+    expiration-seconds: 3600
+  captcha:
+    url: "http://milky.peykasa.ir/api/user-service/captcha/generate"
+    validate-url: "http://milky.peykasa.ir/api/user-service/captcha/validate"
+  sms:
+    sender-api-url: "https://sms.example/send"
+    sender-api-key: "replace-with-real-key"

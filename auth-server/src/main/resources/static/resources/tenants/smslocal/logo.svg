@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" width="200" height="60">
+  <defs>
+    <linearGradient id="grad-sms" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0288D1" />
+      <stop offset="100%" stop-color="#00BCD4" />
+    </linearGradient>
+  </defs>
+  <rect width="200" height="60" rx="12" fill="url(#grad-sms)"/>
+  <rect x="18" y="16" width="28" height="28" rx="6" fill="#ffffff" opacity="0.95"/>
+  <path d="M22 23 L32 31 L42 23" stroke="#0288D1" stroke-width="3" fill="none"/>
+  <text x="56" y="38" font-family="system-ui, sans-serif" font-size="18" font-weight="bold" fill="#ffffff">SMS LOCAL</text>
+</svg>

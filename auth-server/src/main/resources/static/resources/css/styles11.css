@@ -1,0 +1,130 @@
+@import url("https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap");
+
+* {
+    font-family: "Vazirmatn", sans-serif;
+    box-sizing: border-box;
+}
+
+/* --- پس زمینه کهکشانی متحرک --- */
+.gradient-bg {
+    background: linear-gradient(270deg, #0f0c29, #302b63, #24243e, #0f0c29);
+    background-size: 400% 400%;
+    animation: gradient-animation 25s ease infinite;
+}
+
+@keyframes gradient-animation {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* --- بازطراحی کارت فرم --- */
+.glass-effect {
+    background: rgba(17, 24, 39, 0.75); /* یک پس زمینه تیره و نیمه شفاف */
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+/* --- استایل جدید برای اینپوت‌ها --- */
+.input-focus {
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #e5e7eb;
+    transition: all 0.2s ease-in-out;
+}
+
+.input-focus::placeholder {
+    color: #9ca3af;
+}
+
+.input-focus:focus {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: #8b5cf6; /* رنگ بنفش برای فوکوس */
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.4);
+    transform: none; /* حذف افکت قبلی */
+}
+
+/* --- بازطراحی دکمه --- */
+.btn-hover {
+    background: #8b5cf6; /* رنگ اصلی بنفش */
+    transition: all 0.2s ease-in-out;
+    box-shadow: 0 4px 15px rgba(139, 92, 246, 0.2);
+}
+
+.btn-hover:hover {
+    background: #7c3aed; /* رنگ تیره‌تر برای هاور */
+    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.3);
+}
+
+/* حذف افکت درخشش قبلی */
+.btn-hover::before {
+    display: none;
+}
+
+/* --- حذف شکل‌های شناور --- */
+.floating-shapes {
+    display: none;
+}
+
+/* --- بهبود خوانایی سایر عناصر --- */
+label,
+.text-slate-500 {
+    color: #d1d5db; /* خاکستری روشن برای لیبل‌ها */
+}
+
+.text-gray-600,
+.text-gray-500 {
+    color: #a0aec0;
+}
+
+.border-gray-300 {
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.bg-white {
+    background-color: transparent !important;
+}
+
+/* رنگ لینک‌ها برای هماهنگی با تم */
+a.text-yellow-500 {
+    color: #a78bfa; /* بنفش روشن */
+    transition: color 0.2s;
+}
+
+a.text-yellow-500:hover {
+    color: #c4b5fd;
+}
+
+/* انیمیشن‌های کاربردی (بدون تغییر) */
+.shake {
+    animation: shake 0.5s;
+}
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+.success-check {
+    animation: scaleIn 0.5s ease-out;
+}
+@keyframes scaleIn {
+    0% { transform: scale(0); opacity: 0; }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.loading-spinner {
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top: 3px solid white;
+    width: 20px;
+    height: 20px;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
