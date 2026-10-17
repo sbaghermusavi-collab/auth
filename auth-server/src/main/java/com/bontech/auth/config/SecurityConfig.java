@@ -11,6 +11,7 @@ import jakarta.servlet.DispatcherType;
 import org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory;
 import org.springframework.boot.web.server.WebServerFactoryCustomizer;
 import java.io.File;
+import java.nio.file.Files;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -317,6 +318,8 @@ public class SecurityConfig {
                 .scope("user.write")
                 .build();
 
+        // RegisteredClient base definition contains standard local defaults.
+        // Dynamic tenant redirect URIs will be enriched below from database (tenants table).
         RegisteredClient asanakClient = RegisteredClient.withId("asanak-client")
                 .clientId("asanak")
                 .clientSecret(clientPasswordEncoder.encode(System.getenv().getOrDefault("ASANAK_CLIENT_SECRET", "FoHnEjcMn0ivnr0CV384qicgcEIPuTB4")))
@@ -327,25 +330,9 @@ public class SecurityConfig {
                 .redirectUri("http://localhost/login/oauth2/code/keycloak")
                 .redirectUri("http://localhost:8080/login/oauth2/code/keycloak")
                 .redirectUri("http://localhost:8090/login/oauth2/code/keycloak")
-                .redirectUri("http://sms.local/login/oauth2/code/keycloak")
-                .redirectUri("http://asan.local/login/oauth2/code/keycloak")
-                .redirectUri("http://arman.local/login/oauth2/code/keycloak")
-                .redirectUri("http://smslocal.ir/login/oauth2/code/keycloak")
-                .redirectUri("http://smslocal.ir:8090/login/oauth2/code/keycloak")
-                .redirectUri("http://asanlocal.ir/login/oauth2/code/keycloak")
-                .redirectUri("http://asanlocal.ir:8090/login/oauth2/code/keycloak")
-                .redirectUri("http://admin.bagherlocal.ir/login/oauth2/code/admin-client")
-                .redirectUri("http://admin.bagherlocal.ir:8090/login/oauth2/code/admin-client")
-                .redirectUri("http://admin.bagherlocal.ir/login/oauth2/code/keycloak")
-                .redirectUri("http://admin.bagherlocal.ir:8090/login/oauth2/code/keycloak")
-                .redirectUri("http://bagherlocal.ir/login/oauth2/code/keycloak")
-                .redirectUri("http://bagherlocal.ir:8090/login/oauth2/code/keycloak")
-                .redirectUri("http://smslocal.ir/login/oauth2/code/milky-way")
-                .redirectUri("http://smslocal.ir:8090/login/oauth2/code/milky-way")
-                .redirectUri("http://asanlocal.ir/login/oauth2/code/milky-way")
-                .redirectUri("http://asanlocal.ir:8090/login/oauth2/code/milky-way")
-                .redirectUri("http://bagherlocal.ir/login/oauth2/code/milky-way")
-                .redirectUri("http://bagherlocal.ir:8090/login/oauth2/code/milky-way")
+                .redirectUri("http://localhost/login/oauth2/code/milky-way")
+                .redirectUri("http://localhost:8080/login/oauth2/code/milky-way")
+                .redirectUri("http://localhost:8090/login/oauth2/code/milky-way")
                 .scope("openid")
                 .scope("profile")
                 .scope("email")
@@ -367,16 +354,6 @@ public class SecurityConfig {
                 .redirectUri("http://localhost/login/oauth2/code/admin-client")
                 .redirectUri("http://localhost:8080/login/oauth2/code/admin-client")
                 .redirectUri("http://localhost:8090/login/oauth2/code/admin-client")
-                .redirectUri("http://admin.asanlocal.ir/login/oauth2/code/admin-client")
-                .redirectUri("http://admin.asanlocal.ir:8090/login/oauth2/code/admin-client")
-                .redirectUri("http://admin.bagherlocal.ir/login/oauth2/code/admin-client")
-                .redirectUri("http://admin.bagherlocal.ir:8090/login/oauth2/code/admin-client")
-                .redirectUri("http://bagherlocal.ir/login/oauth2/code/admin-client")
-                .redirectUri("http://bagherlocal.ir:8090/login/oauth2/code/admin-client")
-                .redirectUri("http://asanlocal.ir/login/oauth2/code/admin-client")
-                .redirectUri("http://asanlocal.ir:8090/login/oauth2/code/admin-client")
-                .redirectUri("http://smslocal.ir/login/oauth2/code/admin-client")
-                .redirectUri("http://smslocal.ir:8090/login/oauth2/code/admin-client")
                 .scope("openid")
                 .scope("profile")
                 .scope("email")
@@ -517,8 +494,8 @@ public class SecurityConfig {
                     // Add to JWT Claims (Payload)
                     context.getClaims().claim("tenant_id", user.getTenantId());
                     context.getClaims().claim("roles", roles);
-                    context.getClaims().claim("permissions", permissions);
-                    context.getClaims().claim("authorities", authorities);
+//                    context.getClaims().claim("permissions", permissions);
+//                    context.getClaims().claim("authorities", authorities);
 
                     // Add customer context claim matching legacy CompanyIdProtocolMapper structure
                     Map<String, Object> customer = new HashMap<>();
@@ -526,6 +503,17 @@ public class SecurityConfig {
                     customer.put("username", user.getUsername());
                     customer.put("tenant_id", user.getTenantId());
                     context.getClaims().claim("customer", customer);
+
+                    // Add legacy Keycloak-compatible realm_access and resource_access claims
+                    Map<String, Object> realmAccess = new HashMap<>();
+                    realmAccess.put("roles", authorities);
+                    context.getClaims().claim("realm_access", realmAccess);
+
+                    Map<String, Object> clientAccess = new HashMap<>();
+                    clientAccess.put("roles", roles);
+                    Map<String, Object> resourceAccess = new HashMap<>();
+                    resourceAccess.put("account", clientAccess);
+                    context.getClaims().claim("resource_access", resourceAccess);
 
                     // Add to JWT Header (JWS Header)
                     context.getJwsHeader().header("tenant_id", user.getTenantId());
@@ -545,11 +533,23 @@ public class SecurityConfig {
                     new File("src/main/webapp"),
                     new File("auth/auth-server/src/main/webapp")
             };
+            boolean found = false;
             for (File docBase : possibleDocBases) {
                 if (docBase.exists() && docBase.isDirectory()) {
                     log.info("[TomcatCustomizer] Setting Tomcat document root to: {}", docBase.getAbsolutePath());
                     factory.setDocumentRoot(docBase);
+                    found = true;
                     break;
+                }
+            }
+            if (!found) {
+                try {
+                    File tempDocBase = Files.createTempDirectory("embedded-tomcat-jsp").toFile();
+                    tempDocBase.deleteOnExit();
+                    factory.setDocumentRoot(tempDocBase);
+                    log.info("[TomcatCustomizer] No webapp directory found on disk; setting temporary document root for JAR execution: {}", tempDocBase.getAbsolutePath());
+                } catch (Exception e) {
+                    log.warn("[TomcatCustomizer] Could not create temp document root for Tomcat: {}", e.getMessage());
                 }
             }
         };
