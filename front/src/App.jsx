@@ -1,170 +1,306 @@
 import React, { useState, useEffect } from 'react';
-import Sidebar from './components/layout/Sidebar';
-import Header from './components/layout/Header';
-import ImpersonationBanner from './components/layout/ImpersonationBanner';
+import AdminDashboard from './components/AdminDashboard';
 import LoginPage from './pages/LoginPage';
-import UsersPage from './pages/UsersPage';
-import RolesPage from './pages/RolesPage';
-import PermissionsPage from './pages/PermissionsPage';
-import DashboardPage from './pages/DashboardPage';
-import AuditPage from './pages/AuditPage';
-import SettingsPage from './pages/SettingsPage';
 import ClaimsModal from './pages/ClaimsModal';
-import { iamApi, getStoredToken, getStoredUser, setStoredToken, setStoredUser } from './api/iamService';
+import {
+  iamApi,
+  getStoredToken,
+  getStoredUser,
+  getStoredActiveTenant,
+  setStoredActiveTenant
+} from './api/iamService';
 import { TenantThemeProvider } from './context/TenantThemeContext';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('users');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [isAuthenticated, setIsAuthenticated] = useState(() => !!getStoredToken());
   const [currentUser, setCurrentUser] = useState(() => getStoredUser());
   const [tenants, setTenants] = useState([]);
-  const [activeTenantId, setActiveTenantId] = useState(() => localStorage.getItem('iam_active_tenant_id') || '');
+  const [modules, setModules] = useState([]);
+  const [activeTenantId, setActiveTenantId] = useState(() => getStoredActiveTenant() || '10');
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
   const [permissionGroups, setPermissionGroups] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [sessions, setSessions] = useState([]);
   const [isClaimsModalOpen, setIsClaimsModalOpen] = useState(false);
   const [notification, setNotification] = useState(null);
-  const [loadingData, setLoadingData] = useState(false);
 
-  const showToast = (message) => {
-    setNotification(message);
+  const showToast = (message, type = 'info') => {
+    setNotification({ message, type });
     setTimeout(() => setNotification(null), 4000);
   };
 
-  // Load live data from Backend APIs when authenticated
   const loadBackendData = async (targetTenantId = activeTenantId) => {
-    setLoadingData(true);
+    const resolvedTid = Number(targetTenantId || currentUser?.tenantId || 10);
     try {
-      const [tenantsList, usersData, rolesData, permsData] = await Promise.all([
-        iamApi.getTenants().catch((err) => {
-          console.warn('Failed to load tenants:', err);
-          return [];
-        }),
-        iamApi.getUsers(targetTenantId || undefined).catch((err) => {
-          console.warn('Failed to load users from backend:', err);
-          return [];
-        }),
-        iamApi.getRoles(targetTenantId || undefined).catch((err) => {
-          console.warn('Failed to load roles from backend:', err);
-          return [];
-        }),
-        iamApi.getPermissions(targetTenantId || undefined).catch((err) => {
-          console.warn('Failed to load permissions from backend:', err);
-          return [];
-        })
+      const [
+        tenantsList,
+        modulesList,
+        usersData,
+        rolesData,
+        permsData,
+        logsData,
+        sessionsData
+      ] = await Promise.all([
+        iamApi.getTenants().catch(() => []),
+        iamApi.getModules().catch(() => []),
+        iamApi.getUsers(resolvedTid).catch(() => []),
+        iamApi.getRoles(resolvedTid).catch(() => []),
+        iamApi.getPermissions(resolvedTid).catch(() => []),
+        iamApi.getAuditLogs(currentUser?.role === 'SUPER_ADMIN' ? null : resolvedTid).catch(() => []),
+        iamApi.getMySessions().catch(() => [])
       ]);
 
       setTenants(tenantsList);
-      if (tenantsList.length > 0 && !targetTenantId) {
-        const firstId = String(tenantsList[0].id);
-        setActiveTenantId(firstId);
-        localStorage.setItem('iam_active_tenant_id', firstId);
-      }
+      setModules(modulesList);
       setUsers(usersData);
       setRoles(rolesData);
       setPermissionGroups(permsData);
+      setAuditLogs(logsData);
+      setSessions(sessionsData);
     } catch (err) {
       console.error('Error loading backend data', err);
-    } finally {
-      setLoadingData(false);
     }
   };
 
   const handleTenantSwitch = (newTenantId) => {
-    setActiveTenantId(newTenantId);
-    localStorage.setItem('iam_active_tenant_id', String(newTenantId));
-    setActiveTab('dashboard'); // State reset per plan: jump to dashboard cleanly
-    loadBackendData(newTenantId);
-    showToast(`مستأجر فعال با موفقیت تغییر یافت.`);
+    const strId = String(newTenantId);
+    setActiveTenantId(strId);
+    setStoredActiveTenant(strId);
+    loadBackendData(strId);
+    const found = tenants.find((t) => String(t.id) === strId);
+    showToast(`قلمرو مدیریت به مستأجر «${found ? found.name : `#${strId}`}» تغییر یافت.`);
   };
 
   useEffect(() => {
-    if (isAuthenticated) {
-      loadBackendData();
+    if (isAuthenticated && currentUser) {
+      const initialTid =
+        currentUser.role === 'SUPER_ADMIN'
+          ? getStoredActiveTenant() || '10'
+          : String(currentUser.tenantId || 10);
+      setActiveTenantId(initialTid);
+      loadBackendData(initialTid);
     }
   }, [isAuthenticated]);
 
-  // Handle successful login
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
     setIsAuthenticated(true);
-    showToast(`خوش آمدید! ورود به عنوان ${user.displayName} با موفقیت انجام شد.`);
+    const initialTid = user.role === 'SUPER_ADMIN' ? '10' : String(user.tenantId || 10);
+    setActiveTenantId(initialTid);
+    setStoredActiveTenant(initialTid);
+    showToast(`خوش آمدید! ورود به درگاه admin.asan.com با نقش ${user.role} انجام شد.`);
   };
 
-  // Handle logout
   const handleLogout = async () => {
     try {
       await iamApi.logout();
-    } catch (e) {
-      console.warn('Logout API error', e);
-    }
+    } catch {}
     setIsAuthenticated(false);
     setCurrentUser(null);
     setUsers([]);
     setRoles([]);
     setPermissionGroups([]);
-    showToast('با موفقیت از حساب کاربری خارج شدید.');
+    showToast('با موفقیت از درگاه یکپارچه admin.asan.com خارج شدید.');
   };
 
-  // Handle impersonation (RFC 8693)
+  // --- Impersonation Handlers ---
   const handleImpersonate = async (targetUsername) => {
     try {
       const updatedUser = await iamApi.impersonate(targetUsername);
       setCurrentUser(updatedUser);
-      showToast(`جعل هویت با موفقیت فعال گردید. محیط کاربری ${targetUsername} در تب جدید باز شد.`);
+      await loadBackendData(activeTenantId);
+      showToast(`جعل هویت RFC 8693 برای کاربر @${targetUsername} فعال شد.`);
     } catch (err) {
-      alert(`خطا در جعل هویت: ${err.message}`);
+      showToast(err.message, 'error');
+      await loadBackendData(activeTenantId);
     }
   };
 
-  // Handle revert impersonation
   const handleRevert = async () => {
     try {
       const reverted = await iamApi.revertImpersonation();
       setCurrentUser(reverted);
-      showToast('نشست با موفقیت به حساب اصلی مدیر بازگردانده شد.');
+      await loadBackendData(activeTenantId);
+      showToast('نشست به حساب ادمین اصلی در admin.asan.com بازگردانده شد.');
     } catch (err) {
-      alert(`خطا در بازگشت از جعل هویت: ${err.message}`);
+      showToast(err.message, 'error');
     }
   };
 
-  // Handle user status toggle via Backend API
-  const handleUpdateUser = async (userToUpdate) => {
+  // --- User & Access Handlers ---
+  const handleUpdateUserStatus = async (userToUpdate) => {
     try {
       await iamApi.toggleUserStatus(userToUpdate.id, userToUpdate.enabled);
-      const refreshedUsers = await iamApi.getUsers();
-      setUsers(refreshedUsers);
-      showToast(`وضعیت کاربر ${userToUpdate.username} در پایگاه داده به‌روزرسانی شد.`);
+      await loadBackendData(activeTenantId);
+      showToast(`وضعیت حساب @${userToUpdate.username} بروزرسانی شد.`);
     } catch (err) {
-      alert(`خطا در به‌روزرسانی وضعیت کاربر: ${err.message}`);
+      showToast(err.message, 'error');
     }
   };
 
-  // Handle create user via Backend API
+  const handleUpdateUserAccess = async (userId, accessPayload) => {
+    try {
+      await iamApi.updateUserAccess(userId, accessPayload);
+      await loadBackendData(activeTenantId);
+      showToast('نقش‌ها و پرمیژن‌های مستقیم کاربر با موفقیت ذخیره شد.');
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
   const handleCreateUser = async (newUserData) => {
     try {
       await iamApi.createUser(newUserData);
-      const refreshedUsers = await iamApi.getUsers();
-      setUsers(refreshedUsers);
-      showToast(`کاربر جدید ${newUserData.username} با موفقیت در پایگاه داده ایجاد گردید.`);
+      await loadBackendData(activeTenantId);
+      showToast(`کاربر جدید @${newUserData.username} با موفقیت ایجاد شد.`);
     } catch (err) {
-      alert(`خطا در ایجاد کاربر: ${err.message}`);
+      showToast(err.message, 'error');
     }
   };
 
-  // Handle create role via Backend API
+  // --- Role & Group Handlers ---
   const handleCreateRole = async (newRoleData) => {
     try {
       await iamApi.createRole(newRoleData);
-      const refreshedRoles = await iamApi.getRoles();
-      setRoles(refreshedRoles);
-      showToast(`نقش سفارشی ${newRoleData.name} با موفقیت در بک‌اند ثبت شد.`);
+      await loadBackendData(activeTenantId);
+      showToast(`نقش سفارشی ${newRoleData.name} ایجاد شد.`);
     } catch (err) {
-      alert(`خطا در ایجاد نقش: ${err.message}`);
+      showToast(err.message, 'error');
     }
   };
 
-  // If not authenticated, render Login Page
+  const handleUpdateRole = async (roleId, roleData) => {
+    try {
+      await iamApi.updateRole(roleId, roleData);
+      await loadBackendData(activeTenantId);
+      showToast(`پرمیژن‌های نقش ${roleData.code} بروزرسانی شد.`);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
+  const handleAttachGroupToRole = async (roleId, groupId) => {
+    try {
+      const res = await iamApi.attachGroupToRole(roleId, groupId);
+      await loadBackendData(activeTenantId);
+      showToast(
+        res.reason
+          ? `گروه متصل شد (${res.added} مجوز اضافه شد · ${res.reason})`
+          : `کلیه پرمیژن‌های مجاز این گروه (${res.added} مجوز) به نقش متصل شد.`
+      );
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
+  const handleDetachGroupFromRole = async (roleId, groupId) => {
+    try {
+      const res = await iamApi.detachGroupFromRole(roleId, groupId);
+      await loadBackendData(activeTenantId);
+      showToast(`پرمیژن‌های گروه (${res.removed} مجوز) از نقش جدا شد.`);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
+  // --- Super Admin Tenant Entitlement Handlers ---
+  const handleGrantPermission = async (tenantId, permId, permCode) => {
+    try {
+      await iamApi.grantPermissionToTenant(tenantId, permId);
+      await loadBackendData(tenantId);
+      showToast(`پرمیژن ${permCode} به مستأجر #${tenantId} اعطا شد.`);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
+  const handleRevokePermission = async (tenantId, permId, permCode) => {
+    try {
+      await iamApi.revokePermissionFromTenant(tenantId, permId);
+      await loadBackendData(tenantId);
+      showToast(`پرمیژن ${permCode} از مستأجر #${tenantId} و نقش‌های آن سلب شد.`);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
+  const handleGrantGroup = async (tenantId, groupId, groupCode) => {
+    try {
+      await iamApi.grantGroupToTenant(tenantId, groupId);
+      await loadBackendData(tenantId);
+      showToast(`تمامی پرمیژن‌های ماژول ${groupCode} به مستأجر #${tenantId} اعطا شد.`);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
+  const handleRevokeGroup = async (tenantId, groupId, groupCode) => {
+    try {
+      await iamApi.revokeGroupFromTenant(tenantId, groupId);
+      await loadBackendData(tenantId);
+      showToast(`ماژول ${groupCode} از مستأجر #${tenantId} سلب گردید.`);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
+  const handleCreatePermission = async (payload) => {
+    try {
+      await iamApi.createPermission(payload);
+      await loadBackendData(activeTenantId);
+      showToast(`پرمیژن جدید ${payload.code} به کاتالوگ اضافه شد.`);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
+  // --- Tenant Lifecycle & Cloning Handlers ---
+  const handleCreateTenant = async (payload) => {
+    try {
+      const created = await iamApi.createTenant(payload);
+      setActiveTenantId(String(created.id));
+      setStoredActiveTenant(String(created.id));
+      await loadBackendData(created.id);
+      showToast(`مستأجر جدید «${created.name}» و حساب ادمین @${created.adminUsername} ایجاد شد.`);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
+  const handleUpdateTenant = async (tenantId, payload) => {
+    try {
+      await iamApi.updateTenant(tenantId, payload);
+      await loadBackendData(activeTenantId);
+      showToast('پیکربندی و ماژول‌های مستأجر بروزرسانی شد.');
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
+  const handleCloneTenant = async (sourceTenantId, payload) => {
+    try {
+      const cloned = await iamApi.cloneTenant(sourceTenantId, payload);
+      setActiveTenantId(String(cloned.id));
+      setStoredActiveTenant(String(cloned.id));
+      await loadBackendData(cloned.id);
+      showToast(`مستأجر «${cloned.name}» با موفقیت از روی مستأجر #${sourceTenantId} کلون شد.`);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
+  const handleRevokeSession = async (sessionId) => {
+    try {
+      await iamApi.revokeSession(sessionId);
+      await loadBackendData(activeTenantId);
+      showToast(`نشست #${sessionId} باطل شد.`);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
   if (!isAuthenticated || !currentUser) {
     return (
       <TenantThemeProvider currentUser={currentUser}>
@@ -173,99 +309,55 @@ export default function App() {
     );
   }
 
+  const activeTenantObj =
+    tenants.find((t) => String(t.id) === String(activeTenantId)) || tenants[0] || null;
+
   return (
     <TenantThemeProvider currentUser={currentUser}>
-      <div className="flex min-h-screen bg-slate-900 text-slate-100 font-sans antialiased" dir="rtl">
-        {/* Toast Notification */}
-        {notification && (
-          <div className="fixed bottom-5 left-5 z-50 bg-cyan-900 border border-cyan-700 text-white px-4 py-2.5 rounded-xl shadow-2xl text-xs flex items-center gap-2 animate-bounce">
-            <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
-            <span>{notification}</span>
-          </div>
-        )}
+      <AdminDashboard
+        activeTab={activeTab}
+        onSelectTab={setActiveTab}
+        currentUser={currentUser}
+        tenants={tenants}
+        modules={modules}
+        activeTenantId={activeTenantId}
+        activeTenantObj={activeTenantObj}
+        users={users}
+        roles={roles}
+        permissionGroups={permissionGroups}
+        auditLogs={auditLogs}
+        sessions={sessions}
+        notification={notification}
+        onTenantSwitch={handleTenantSwitch}
+        onOpenClaimsModal={() => setIsClaimsModalOpen(true)}
+        onLogout={handleLogout}
+        onImpersonate={handleImpersonate}
+        onRevert={handleRevert}
+        onUpdateUserStatus={handleUpdateUserStatus}
+        onUpdateUserAccess={handleUpdateUserAccess}
+        onCreateUser={handleCreateUser}
+        onCreateRole={handleCreateRole}
+        onUpdateRole={handleUpdateRole}
+        onAttachGroupToRole={handleAttachGroupToRole}
+        onDetachGroupFromRole={handleDetachGroupFromRole}
+        onGrantPermission={handleGrantPermission}
+        onRevokePermission={handleRevokePermission}
+        onGrantGroup={handleGrantGroup}
+        onRevokeGroup={handleRevokeGroup}
+        onCreatePermission={handleCreatePermission}
+        onCreateTenant={handleCreateTenant}
+        onUpdateTenant={handleUpdateTenant}
+        onCloneTenant={handleCloneTenant}
+        onRevokeSession={handleRevokeSession}
+      />
 
-        {/* Sidebar Navigation */}
-        <Sidebar
-          activeTab={activeTab}
-          onSelectTab={setActiveTab}
+      {isClaimsModalOpen && (
+        <ClaimsModal
           currentUser={currentUser}
+          activeTenantId={activeTenantId}
+          onClose={() => setIsClaimsModalOpen(false)}
         />
-
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* RFC 8693 Impersonation Top Banner */}
-          <ImpersonationBanner
-            isImpersonated={currentUser?.isImpersonated}
-            targetUser={currentUser?.targetUsername || currentUser?.username}
-            actor={currentUser?.actor}
-            onRevert={handleRevert}
-          />
-
-          {/* Global Navigation Header with Logout & Tenant Switcher */}
-          <Header
-            currentUser={currentUser}
-            tenants={tenants}
-            activeTenantId={activeTenantId}
-            onTenantSwitch={handleTenantSwitch}
-            onOpenClaimsModal={() => setIsClaimsModalOpen(true)}
-            onLogout={handleLogout}
-          />
-
-          {/* Tab Pages */}
-          <main className="flex-1 p-6 overflow-y-auto">
-            {activeTab === 'dashboard' && (
-              <DashboardPage
-                users={users}
-                roles={roles}
-                currentUser={currentUser}
-                onSelectTab={setActiveTab}
-              />
-            )}
-
-            {activeTab === 'users' && (
-              <UsersPage
-                users={users}
-                currentUser={currentUser}
-                onImpersonate={handleImpersonate}
-                onUpdateUser={handleUpdateUser}
-                onCreateUser={handleCreateUser}
-              />
-            )}
-
-            {activeTab === 'roles' && (
-              <RolesPage
-                roles={roles}
-                permissionGroups={permissionGroups}
-                currentUser={currentUser}
-                onCreateRole={handleCreateRole}
-              />
-            )}
-
-            {activeTab === 'permissions' && (
-              <PermissionsPage
-                permissionGroups={permissionGroups}
-                currentUser={currentUser}
-              />
-            )}
-
-            {activeTab === 'audit' && (
-              <AuditPage currentUser={currentUser} />
-            )}
-
-            {activeTab === 'settings' && (
-              <SettingsPage currentUser={currentUser} />
-            )}
-          </main>
-        </div>
-
-        {/* Claims Modal */}
-        {isClaimsModalOpen && (
-          <ClaimsModal
-            currentUser={currentUser}
-            onClose={() => setIsClaimsModalOpen(false)}
-          />
-        )}
-      </div>
+      )}
     </TenantThemeProvider>
   );
 }

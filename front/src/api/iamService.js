@@ -1,17 +1,20 @@
 /**
- * IAM Service - Live Backend API Client for BFF Gateway & Auth Server
- * Fully connected to:
+ * Unified IAM & BFF Admin Service for admin.asan.com
+ * Connects both Super Admin and Tenant Admins to:
  * - /api/auth/login, /api/auth/send-otp, /api/auth/verify-2fa
- * - /api/tenant-admin/users, /api/tenant-admin/users/{id}/status
- * - /api/admin/users, /api/admin/roles
- * - /api/admin/tenants/{tenantId}/permissions
+ * - /api/admin/tenants, /api/admin/tenants/:id/clone, /api/admin/modules
+ * - /api/admin/tenants/:tenantId/permissions/:permissionId (Grant / Revoke)
+ * - /api/admin/tenants/:tenantId/permission-groups/:groupId (Grant / Revoke Group)
+ * - /api/admin/users, /api/tenant-admin/users, /api/admin/users/:id/roles
+ * - /api/admin/roles, /api/admin/roles/:roleId/groups/:groupId
  * - /api/admin/impersonate, /api/admin/impersonate/revert
- * - /api/v1/permission/logout, /logout
+ * - /api/admin/audit-logs, /api/reports/users/:username/logs, /api/sessions/my
  */
 
 const TOKEN_KEY = 'iam_access_token';
 const USER_KEY = 'iam_current_user';
 const ACTIVE_TENANT_KEY = 'iam_active_tenant_id';
+export const UNIFIED_ADMIN_HOST = 'admin.asan.com';
 
 export function getStoredActiveTenant() {
   return localStorage.getItem(ACTIVE_TENANT_KEY) || sessionStorage.getItem(ACTIVE_TENANT_KEY) || null;
@@ -27,7 +30,6 @@ export function setStoredActiveTenant(tenantId) {
   }
 }
 
-// Helper to decode JWT payload
 export function parseJwt(token) {
   try {
     const base64Url = token.split('.')[1];
@@ -39,7 +41,7 @@ export function parseJwt(token) {
         .join('')
     );
     return JSON.parse(jsonPayload);
-  } catch (e) {
+  } catch {
     return null;
   }
 }
@@ -52,24 +54,11 @@ export function setStoredToken(token) {
   if (token) {
     sessionStorage.setItem(TOKEN_KEY, token);
     localStorage.setItem(TOKEN_KEY, token);
-    // Set document cookie for browser requests
     document.cookie = `access_token=${token}; path=/; SameSite=Lax`;
-    try {
-      const rootDomain = window.location.hostname.replace(/^admin\./, '');
-      if (rootDomain && rootDomain !== 'localhost' && rootDomain !== '127.0.0.1') {
-        document.cookie = `access_token=${token}; path=/; domain=${rootDomain}; SameSite=Lax`;
-      }
-    } catch (e) {}
   } else {
     sessionStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(TOKEN_KEY);
     document.cookie = 'access_token=; path=/; Max-Age=0';
-    try {
-      const rootDomain = window.location.hostname.replace(/^admin\./, '');
-      if (rootDomain && rootDomain !== 'localhost' && rootDomain !== '127.0.0.1') {
-        document.cookie = `access_token=; path=/; domain=${rootDomain}; Max-Age=0`;
-      }
-    } catch (e) {}
   }
 }
 
@@ -78,7 +67,9 @@ export function getStoredUser() {
   if (raw) {
     try {
       return JSON.parse(raw);
-    } catch (e) {}
+    } catch {
+      return null;
+    }
   }
   return null;
 }
@@ -93,13 +84,14 @@ export function setStoredUser(user) {
   }
 }
 
-function getAuthHeaders() {
+function getAuthHeaders(overrideTenantId) {
   const token = getStoredToken();
   const user = getStoredUser();
-  const activeTenant = getStoredActiveTenant();
+  const activeTenant = overrideTenantId || getStoredActiveTenant();
   const headers = {
     'Content-Type': 'application/json',
-    'Accept': 'application/json'
+    'Accept': 'application/json',
+    'X-Forwarded-Host': UNIFIED_ADMIN_HOST
   };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -119,9 +111,6 @@ function getAuthHeaders() {
 }
 
 export const iamApi = {
-  /**
-   * Step 1: Login with username/identifier & password
-   */
   async login(identifier, password) {
     const formData = new URLSearchParams();
     formData.append('identifier', identifier);
@@ -129,7 +118,10 @@ export const iamApi = {
 
     const res = await fetch('/api/auth/login', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-Forwarded-Host': UNIFIED_ADMIN_HOST
+      },
       body: formData.toString(),
       credentials: 'include'
     });
@@ -138,13 +130,9 @@ export const iamApi = {
     if (!res.ok) {
       throw new Error(data.message || 'خطا در نام کاربری یا رمز عبور');
     }
-
     return data;
   },
 
-  /**
-   * Step 2: Send 2FA OTP code
-   */
   async sendOtp(authSessionId, phone) {
     const formData = new URLSearchParams();
     formData.append('authSessionId', authSessionId);
@@ -153,7 +141,10 @@ export const iamApi = {
 
     const res = await fetch('/api/auth/send-otp', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-Forwarded-Host': UNIFIED_ADMIN_HOST
+      },
       body: formData.toString(),
       credentials: 'include'
     });
@@ -165,9 +156,6 @@ export const iamApi = {
     return data;
   },
 
-  /**
-   * Step 3: Verify 2FA code and obtain access token
-   */
   async verify2fa(authSessionId, code = '999999') {
     const formData = new URLSearchParams();
     formData.append('authSessionId', authSessionId);
@@ -175,7 +163,10 @@ export const iamApi = {
 
     const res = await fetch('/api/auth/verify-2fa', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-Forwarded-Host': UNIFIED_ADMIN_HOST
+      },
       body: formData.toString(),
       credentials: 'include'
     });
@@ -193,29 +184,36 @@ export const iamApi = {
     setStoredToken(token);
     const jwtClaims = parseJwt(token) || {};
 
-    // Construct user object from token
-    const isSuper = jwtClaims.preferred_username === 'superadmin' || jwtClaims.sub === '999' || jwtClaims.tenant_numeric_id === 1;
-    const resolvedTenantId = jwtClaims.tenant_numeric_id || 1;
-    const resolvedTenantCode = jwtClaims.tenant_id || (isSuper ? 'default' : 'tenant');
+    const isSuper =
+      jwtClaims.preferred_username === 'superadmin' ||
+      jwtClaims.sub === '999' ||
+      jwtClaims.tenant_numeric_id === 1 ||
+      (Array.isArray(jwtClaims.roles) && jwtClaims.roles.includes('SUPER_ADMIN'));
+
+    const resolvedTenantId = jwtClaims.tenant_numeric_id || (isSuper ? 1 : 10);
+    const resolvedTenantCode = jwtClaims.tenant_id || (isSuper ? 'default' : 'smslocal');
+
     const userObj = {
       username: jwtClaims.preferred_username || jwtClaims.username || 'admin',
-      displayName: isSuper ? 'راهبر کل پلتفرم (superadmin)' : `مدیر (${jwtClaims.preferred_username || 'admin'})`,
+      displayName: isSuper
+        ? 'راهبر کل پلتفرم (Super Admin)'
+        : `مدیر مستأجر (${jwtClaims.preferred_username || 'admin'})`,
       tenantId: resolvedTenantId,
       tenantName: resolvedTenantCode,
+      host: UNIFIED_ADMIN_HOST,
       role: isSuper ? 'SUPER_ADMIN' : 'TENANT_ADMIN',
-      roles: jwtClaims.realm_access?.roles || (isSuper ? ['SUPER_ADMIN'] : ['TENANT_ADMIN']),
+      roles: jwtClaims.realm_access?.roles || jwtClaims.roles || (isSuper ? ['SUPER_ADMIN'] : ['TENANT_ADMIN']),
+      permissions: jwtClaims.permissions || [],
       isImpersonated: false,
       actor: null,
       rawClaims: jwtClaims
     };
 
     setStoredUser(userObj);
+    setStoredActiveTenant(isSuper ? 10 : resolvedTenantId);
     return { token, user: userObj };
   },
 
-  /**
-   * Logout from all sessions
-   */
   async logout() {
     try {
       await fetch('/api/v1/permission/logout', {
@@ -223,7 +221,7 @@ export const iamApi = {
         headers: getAuthHeaders(),
         credentials: 'include'
       });
-    } catch (e) {}
+    } catch {}
 
     try {
       await fetch('/logout', {
@@ -231,254 +229,275 @@ export const iamApi = {
         headers: getAuthHeaders(),
         credentials: 'include'
       });
-    } catch (e) {}
+    } catch {}
 
     setStoredToken(null);
     setStoredUser(null);
     return { loggedOut: true };
   },
 
-  /**
-   * Fetch tenants for Switcher
-   */
+  // --- Tenants & Modules (Super Admin) ---
   async getTenants() {
-    try {
-      const res = await fetch('/api/admin/tenants', {
-        method: 'GET',
-        headers: getAuthHeaders()
-      });
-      if (res.ok) {
-        return await res.json();
-      }
-    } catch (e) {
-      console.warn('Failed to load /api/admin/tenants', e);
-    }
-    return [];
+    const res = await fetch('/api/admin/tenants', {
+      method: 'GET',
+      headers: getAuthHeaders()
+    });
+    if (!res.ok) return [];
+    return await res.json();
   },
 
-  /**
-   * Fetch users from live Backend API
-   */
-  async getUsers(tenantId = 10) {
+  async getModules() {
+    const res = await fetch('/api/admin/modules', {
+      method: 'GET',
+      headers: getAuthHeaders()
+    });
+    if (!res.ok) return [];
+    return await res.json();
+  },
+
+  async createTenant(payload) {
+    const res = await fetch('/api/admin/tenants', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'خطا در ایجاد مستأجر');
+    return data;
+  },
+
+  async updateTenant(tenantId, payload) {
+    const res = await fetch(`/api/admin/tenants/${tenantId}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'خطا در ویرایش مستأجر');
+    return data;
+  },
+
+  async cloneTenant(sourceTenantId, payload) {
+    const res = await fetch(`/api/admin/tenants/${sourceTenantId}/clone`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ ...payload, sourceTenantId })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'خطا در کلون کردن مستأجر');
+    return data;
+  },
+
+  // --- Users & User Permissions ---
+  async getUsers(tenantId) {
     const currentUser = getStoredUser();
-    const endpoint = (currentUser?.role === 'SUPER_ADMIN')
-      ? '/api/admin/users'
+    const isSuper = currentUser?.role === 'SUPER_ADMIN';
+    const url = isSuper
+      ? tenantId && Number(tenantId) !== 0
+        ? `/api/admin/users?tenantId=${tenantId}`
+        : '/api/admin/users'
       : '/api/tenant-admin/users';
 
-    const res = await fetch(endpoint, {
+    const res = await fetch(url, {
       method: 'GET',
-      headers: getAuthHeaders(),
+      headers: getAuthHeaders(tenantId),
       credentials: 'include'
     });
-
-    if (!res.ok) {
-      throw new Error(`خطای دریافت کاربران (${res.status})`);
-    }
-
+    if (!res.ok) throw new Error(`خطای دریافت کاربران (${res.status})`);
     const data = await res.json();
     return data.map((u) => ({
-      id: u.id,
-      username: u.username,
-      firstName: u.firstName || (u.username === 'sms_user' ? 'کاربر' : 'مدیر'),
-      lastName: u.lastName || (u.username === 'sms_user' ? 'پیامک عادی' : 'سیستم'),
-      phone: u.phone || (u.username === 'sms_admin' ? '09121110000' : '09121112222'),
-      email: u.email || `${u.username}@tenant.local`,
-      tenantId: u.tenantId,
-      roles: u.roles || [],
-      status: u.enabled ? 'ACTIVE' : 'BLOCKED',
-      enabled: u.enabled !== false,
-      lastLogin: '۱۴۰۵/۰۷/۱۹ ۱۸:۴۵',
-      createdAt: '۱۴۰۵/۰۱/۱۵'
+      ...u,
+      status: u.enabled !== false ? 'ACTIVE' : 'BLOCKED',
+      enabled: u.enabled !== false
     }));
   },
 
-  /**
-   * Create a new user via live Backend API
-   */
   async createUser(userData) {
     const currentUser = getStoredUser();
     const isSuper = currentUser?.role === 'SUPER_ADMIN';
     const endpoint = isSuper ? '/api/admin/users' : '/api/tenant-admin/users';
-
-    const payload = {
-      username: userData.username,
-      password: userData.password || 'password',
-      tenantId: userData.tenantId || (currentUser?.tenantId || 10),
-      systemUser: false,
-      roleIds: userData.roleIds || []
-    };
-
     const res = await fetch(endpoint, {
       method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(payload),
+      headers: getAuthHeaders(userData.tenantId),
+      body: JSON.stringify(userData),
       credentials: 'include'
     });
-
     const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.message || `خطا در ایجاد کاربر (${res.status})`);
-    }
-
+    if (!res.ok) throw new Error(data.message || 'خطا در ایجاد کاربر');
     return {
-      id: data.id,
-      username: data.username,
-      firstName: userData.firstName || 'کاربر',
-      lastName: userData.lastName || 'جدید',
-      phone: userData.phone || '09120000000',
-      email: data.email || `${data.username}@tenant.local`,
-      tenantId: data.tenantId,
-      roles: data.roles || [],
-      status: data.enabled ? 'ACTIVE' : 'BLOCKED',
-      enabled: data.enabled !== false,
-      createdAt: 'هم‌اکنون'
+      ...data,
+      status: data.enabled !== false ? 'ACTIVE' : 'BLOCKED',
+      enabled: data.enabled !== false
     };
   },
 
-  /**
-   * Toggle user status (Active <-> Blocked) via live Backend API
-   */
   async toggleUserStatus(userId, currentEnabled) {
     const currentUser = getStoredUser();
     const isSuper = currentUser?.role === 'SUPER_ADMIN';
     const endpoint = isSuper
       ? `/api/admin/users/${userId}/status`
       : `/api/tenant-admin/users/${userId}/status`;
-
     const res = await fetch(endpoint, {
       method: 'PUT',
       headers: getAuthHeaders(),
       body: JSON.stringify({ enabled: !currentEnabled }),
       credentials: 'include'
     });
-
     const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.message || `خطا در تغییر وضعیت کاربر (${res.status})`);
-    }
+    if (!res.ok) throw new Error(data.message || 'خطا در تغییر وضعیت کاربر');
     return data;
   },
 
-  /**
-   * Fetch roles from live Backend API
-   */
-  async getRoles() {
-    const res = await fetch('/api/admin/roles', {
-      method: 'GET',
+  async updateUserAccess(userId, { roles, directPermissions }) {
+    const currentUser = getStoredUser();
+    const isSuper = currentUser?.role === 'SUPER_ADMIN';
+    const endpoint = isSuper
+      ? `/api/admin/users/${userId}/roles`
+      : `/api/tenant-admin/users/${userId}/roles`;
+    const res = await fetch(endpoint, {
+      method: 'PUT',
       headers: getAuthHeaders(),
+      body: JSON.stringify({ roles, directPermissions }),
       credentials: 'include'
     });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'خطا در بروزرسانی دسترسی‌های کاربر');
+    return data;
+  },
 
-    if (!res.ok) {
-      throw new Error(`خطا در واکشی نقش‌ها (${res.status})`);
-    }
-
+  // --- Roles & One-Click Permission Groups ---
+  async getRoles(tenantId) {
+    const url = tenantId ? `/api/admin/roles?tenantId=${tenantId}` : '/api/admin/roles';
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: getAuthHeaders(tenantId),
+      credentials: 'include'
+    });
+    if (!res.ok) throw new Error('خطا در واکشی نقش‌ها');
     const data = await res.json();
     return data.map((r) => ({
-      id: r.id,
-      code: r.code,
-      name: r.name || r.code,
-      description: r.description || `نقش سیستمی ${r.code}`,
-      tenantId: r.tenantId,
-      isSystem: r.isDefault || r.tenantId === 1,
-      userCount: 1,
-      permissions: r.permissions || []
+      ...r,
+      isSystem: r.isDefault || r.tenantId === 1 || r.code === 'TENANT_ADMIN' || r.code === 'SUPER_ADMIN',
+      permissions: Array.isArray(r.permissions) ? r.permissions : [],
+      groupCodes: Array.isArray(r.groupCodes) ? r.groupCodes : []
     }));
   },
 
-  /**
-   * Create a new role via live Backend API
-   */
   async createRole(roleData) {
-    const currentUser = getStoredUser();
-    const payload = {
-      code: roleData.code,
-      name: roleData.name,
-      description: roleData.description || '',
-      tenantId: currentUser?.tenantId || 10,
-      permissionIds: roleData.permissionIds || []
-    };
-
     const res = await fetch('/api/admin/roles', {
+      method: 'POST',
+      headers: getAuthHeaders(roleData.tenantId),
+      body: JSON.stringify(roleData),
+      credentials: 'include'
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'خطا در ایجاد نقش');
+    return data;
+  },
+
+  async updateRole(roleId, roleData) {
+    const res = await fetch(`/api/admin/roles/${roleId}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(roleData.tenantId),
+      body: JSON.stringify(roleData),
+      credentials: 'include'
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'خطا در بروزرسانی نقش');
+    return data;
+  },
+
+  async attachGroupToRole(roleId, groupId) {
+    const res = await fetch(`/api/admin/roles/${roleId}/groups/${groupId}`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      credentials: 'include'
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'خطا در اتصال گروه دسترسی به نقش');
+    return data;
+  },
+
+  async detachGroupFromRole(roleId, groupId) {
+    const res = await fetch(`/api/admin/roles/${roleId}/groups/${groupId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+      credentials: 'include'
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'خطا در جداسازی گروه دسترسی از نقش');
+    return data;
+  },
+
+  // --- Tenant Permissions & Entitlements ---
+  async getPermissions(tenantId = 10) {
+    const res = await fetch(`/api/admin/tenants/${tenantId}/permissions`, {
+      method: 'GET',
+      headers: getAuthHeaders(tenantId),
+      credentials: 'include'
+    });
+    if (!res.ok) throw new Error('خطا در دریافت کاتالوگ پرمیژن‌ها');
+    const data = await res.json();
+    return data.catalog || [];
+  },
+
+  async grantPermissionToTenant(tenantId, permissionId) {
+    const res = await fetch(`/api/admin/tenants/${tenantId}/permissions/${permissionId}`, {
+      method: 'POST',
+      headers: getAuthHeaders(tenantId),
+      credentials: 'include'
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'خطا در اعطای پرمیژن به مستأجر');
+    return data;
+  },
+
+  async revokePermissionFromTenant(tenantId, permissionId) {
+    const res = await fetch(`/api/admin/tenants/${tenantId}/permissions/${permissionId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(tenantId),
+      credentials: 'include'
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'خطا در سلب پرمیژن از مستأجر');
+    return data;
+  },
+
+  async grantGroupToTenant(tenantId, groupId) {
+    const res = await fetch(`/api/admin/tenants/${tenantId}/permission-groups/${groupId}`, {
+      method: 'POST',
+      headers: getAuthHeaders(tenantId),
+      credentials: 'include'
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'خطا در اعطای ماژول دسترسی به مستأجر');
+    return data;
+  },
+
+  async revokeGroupFromTenant(tenantId, groupId) {
+    const res = await fetch(`/api/admin/tenants/${tenantId}/permission-groups/${groupId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(tenantId),
+      credentials: 'include'
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'خطا در سلب ماژول دسترسی از مستأجر');
+    return data;
+  },
+
+  async createPermission(payload) {
+    const res = await fetch('/api/admin/permissions', {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(payload),
       credentials: 'include'
     });
-
     const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.message || `خطا در ایجاد نقش (${res.status})`);
-    }
+    if (!res.ok) throw new Error(data.message || 'خطا در تعریف پرمیژن جدید');
     return data;
   },
 
-  /**
-   * Fetch entitled permissions for tenant from live Backend API
-   */
-  async getPermissions(tenantId = 10) {
-    const res = await fetch(`/api/admin/tenants/${tenantId}/permissions`, {
-      method: 'GET',
-      headers: getAuthHeaders(),
-      credentials: 'include'
-    });
-
-    if (!res.ok) {
-      throw new Error(`خطا در دریافت پرمیژن‌ها (${res.status})`);
-    }
-
-    const data = await res.json();
-    const perms = data.permissions || [];
-
-    return [
-      {
-        id: 1,
-        name: 'سرویس‌ها و ارسال پیامک (SMS Engine)',
-        code: 'SMS_SERVICES',
-        description: 'دسترسی‌های هسته مرکزی ارسال، دریافت و آمار پیامک‌ها',
-        permissions: perms
-          .filter((p) => p.includes('sms.') || p === 'Campaign')
-          .map((p, idx) => ({
-            id: 100 + idx,
-            code: p,
-            name: p === 'sms.smr.getSmsStats' ? 'آمار ارسال و دریافت پیامک' : p,
-            description: `دسترسی عملیاتی به ماژول ${p}`
-          }))
-      },
-      {
-        id: 2,
-        name: 'مخاطبین و دفترچه تلفن (Contacts & Customers)',
-        code: 'CONTACTS_BOOK',
-        description: 'مدیریت گروه‌ها و دسته‌بندی شماره‌های مخاطبان',
-        permissions: perms
-          .filter((p) => p.includes('Contacts') || p.includes('phs.'))
-          .map((p, idx) => ({
-            id: 200 + idx,
-            code: p,
-            name: p,
-            description: `دسترسی دفترچه تلفن و گروه مخاطبان`
-          }))
-      },
-      {
-        id: 3,
-        name: 'مدیریت کاربران و هویت (IAM Governance)',
-        code: 'IAM_GOVERNANCE',
-        description: 'مدیریت کاربران و احراز هویت در سطح مستأجر',
-        permissions: perms
-          .filter((p) => p.includes('USER_') || p.includes('us.'))
-          .map((p, idx) => ({
-            id: 300 + idx,
-            code: p,
-            name: p,
-            description: `دسترسی مدیریت حساب‌های کاربری`
-          }))
-      }
-    ];
-  },
-
-  /**
-   * Execute real RFC 8693 Impersonation on Backend & Open in New Tab
-   */
+  // --- RFC 8693 Impersonation ---
   async impersonate(targetUsername) {
     const res = await fetch('/api/admin/impersonate', {
       method: 'POST',
@@ -493,14 +512,6 @@ export const iamApi = {
     }
 
     const newToken = data.accessToken;
-    if (newToken) {
-      const rootDomain = window.location.hostname.replace(/^admin\./, '');
-      if (rootDomain && rootDomain !== 'localhost' && rootDomain !== '127.0.0.1') {
-        document.cookie = `access_token=${newToken}; path=/; domain=${rootDomain}; SameSite=Lax`;
-      }
-      document.cookie = `access_token=${newToken}; path=/; SameSite=Lax`;
-    }
-
     const currentUser = getStoredUser();
     const updatedUser = {
       ...currentUser,
@@ -512,24 +523,16 @@ export const iamApi = {
         tenantId: currentUser?.tenantId || 1,
         role: currentUser?.role || 'TENANT_ADMIN'
       },
-      targetUsername: targetUsername
+      targetUsername
     };
 
+    if (newToken) {
+      setStoredToken(newToken);
+    }
     setStoredUser(updatedUser);
-
-    // Open target user's panel in a NEW TAB!
-    const rootDomain = window.location.hostname.replace(/^admin\./, '');
-    const targetUrl = window.location.protocol + '//' + rootDomain + (window.location.port ? ':' + window.location.port : '') + '/';
-    try {
-      window.open(targetUrl, '_blank');
-    } catch (e) {}
-
     return updatedUser;
   },
 
-  /**
-   * Revert impersonation session back to Admin on Backend
-   */
   async revertImpersonation() {
     const res = await fetch('/api/admin/impersonate/revert', {
       method: 'POST',
@@ -557,5 +560,43 @@ export const iamApi = {
 
     setStoredUser(restoredUser);
     return restoredUser;
+  },
+
+  // --- Audit Trail & Active Sessions ---
+  async getAuditLogs(tenantId) {
+    const url = tenantId ? `/api/admin/audit-logs?tenantId=${tenantId}` : '/api/admin/audit-logs';
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: getAuthHeaders(tenantId)
+    });
+    if (!res.ok) return [];
+    return await res.json();
+  },
+
+  async getUserLogs(username) {
+    const res = await fetch(`/api/reports/users/${encodeURIComponent(username)}/logs`, {
+      method: 'GET',
+      headers: getAuthHeaders()
+    });
+    if (!res.ok) return [];
+    return await res.json();
+  },
+
+  async getMySessions() {
+    const res = await fetch('/api/sessions/my', {
+      method: 'GET',
+      headers: getAuthHeaders()
+    });
+    if (!res.ok) return [];
+    return await res.json();
+  },
+
+  async revokeSession(sessionId) {
+    const res = await fetch(`/api/sessions/${sessionId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+    if (!res.ok) throw new Error('خطا در ابطال نشست');
+    return await res.json();
   }
 };

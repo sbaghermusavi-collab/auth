@@ -1,38 +1,35 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { UNIFIED_ADMIN_HOST } from '../api/iamService';
 
 const TenantThemeContext = createContext({
+  hostAddress: UNIFIED_ADMIN_HOST,
   tenantCode: 'default',
-  tenantName: 'سامانه مرکزی',
+  tenantName: 'درگاه یکپارچه مدیریت آسان',
   logoUrl: '/tenants/default/logo.svg',
-  themeCssUrl: '/tenants/default/theme.css',
+  themeCssUrl: '/tenants/default/theme.css'
 });
 
+const KNOWN_TENANTS = new Set(['default', 'smslocal', 'smslocal_ir', 'asanlocal', 'asanlocal_ir']);
+
 function resolveTenant(currentUser) {
-  const host = typeof window !== 'undefined' ? window.location.hostname.toLowerCase() : '';
-  const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-  const paramTenant = urlParams?.get('tenant') || urlParams?.get('tenantId');
-
   let code = 'default';
-
-  if (paramTenant) {
-    code = paramTenant.toLowerCase();
-  } else if (currentUser?.tenantName) {
+  if (currentUser?.tenantName && KNOWN_TENANTS.has(currentUser.tenantName.toLowerCase())) {
     code = currentUser.tenantName.toLowerCase();
-  } else if (host) {
-    let clean = host.replace(/^admin\./, '');
-    let firstPart = clean.split('.')[0].trim();
-    if (firstPart && firstPart !== 'localhost' && firstPart !== '127' && firstPart !== 'www') {
-      code = firstPart;
-    }
   }
 
-  let name = currentUser?.tenantName || (code === 'default' ? 'سامانه مرکزی' : `مستأجر ${code}`);
+  const name =
+    currentUser?.role === 'SUPER_ADMIN'
+      ? 'راهبری سراسری پلتفرم (Global Admin)'
+      : currentUser?.tenantName
+      ? `مستأجر ${currentUser.tenantName}`
+      : 'درگاه یکپارچه مدیریت آسان';
 
   return {
+    hostAddress: UNIFIED_ADMIN_HOST,
     tenantCode: code,
     tenantName: name,
     logoUrl: `/tenants/${code}/logo.svg`,
-    themeCssUrl: `/tenants/${code}/theme.css`,
+    themeCssUrl: `/tenants/default/theme.css`
   };
 }
 
@@ -42,22 +39,6 @@ export function TenantThemeProvider({ currentUser, children }) {
   useEffect(() => {
     const resolved = resolveTenant(currentUser);
     setTenantInfo(resolved);
-
-    // Apply or update tenant stylesheet link in DOM
-    let link = document.getElementById('tenant-theme-css');
-    if (!link) {
-      link = document.createElement('link');
-      link.id = 'tenant-theme-css';
-      link.rel = 'stylesheet';
-      document.head.appendChild(link);
-    }
-    link.href = resolved.themeCssUrl;
-
-    // Update favicon
-    let favicon = document.querySelector("link[rel*='icon']");
-    if (favicon) {
-      favicon.href = resolved.logoUrl;
-    }
   }, [currentUser]);
 
   return (
