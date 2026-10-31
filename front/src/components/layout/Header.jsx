@@ -1,15 +1,16 @@
 import React from 'react';
-import { KeyRound, LogOut, ChevronDown, Globe } from 'lucide-react';
+import { KeyRound, LogOut, ChevronDown, Globe, Building2, Palette } from 'lucide-react';
 import { UNIFIED_ADMIN_HOST } from '../../api/iamService';
+import { useTenantTheme } from '../../context/TenantThemeContext';
 
 const TAB_LABELS = {
-  dashboard: 'نمای کلی و وضعیت دسترسی',
-  users: 'مدیریت کاربران و مجوزها',
-  roles: 'مهندسی نقش‌ها و گروه‌ها',
-  permissions: 'ماتریس استحقاق مستأجر',
-  tenants: 'مدیریت مستأجرین و کلون',
-  audit: 'لاگ ممیزی و نشست‌های فعال',
-  settings: 'سیاست‌های امنیتی و ۲FA'
+  dashboard: 'پیشخوان مدیریتی و معماری دسترسی',
+  tenants: 'مدیریت مستأجرین، ماژول‌ها و کلونینگ',
+  permissions: 'استحقاق مستأجر و کاتالوگ پرمیژن‌های سراسری',
+  roles: 'ماتریس نقش‌ها و اتصال یک‌کلیکی گروه‌ها',
+  users: 'مدیریت کاربران، مجوزهای مستقیم و گروه‌های کاربری',
+  audit: 'ممیزی امنیتی و نشست‌های فعال',
+  settings: 'سیاست‌های احراز هویت و ۲FA'
 };
 
 export default function Header({
@@ -23,84 +24,115 @@ export default function Header({
 }) {
   const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
   const activeTenantObj = tenants.find((t) => String(t.id) === String(activeTenantId));
+  const { paletteId, palettes, setPaletteId } = useTenantTheme();
 
   return (
-    <header className="bg-[#0b0f17]/95 backdrop-blur-md border-b border-slate-800/80 sticky top-0 z-40 px-6 py-3.5 flex items-center justify-between gap-8">
-      {/* Zone 1: Contextual Breadcrumb Trail */}
-      <div className="flex items-center gap-2.5 text-xs whitespace-nowrap shrink-0">
-        <span className="font-mono font-semibold text-sky-400 flex items-center gap-1.5">
-          <Globe className="w-3.5 h-3.5 text-sky-400" />
+    <header className="bg-theme-card border-b border-slate-200 sticky top-0 z-30 px-6 py-3.5 flex items-center justify-between gap-6 shadow-sm">
+      {/* Zone 1: Contextual Breadcrumb */}
+      <div className="flex items-center gap-2 text-xs whitespace-nowrap shrink-0">
+        <span className="font-mono font-bold text-indigo-600 flex items-center gap-1.5">
+          <Globe className="w-4 h-4 text-indigo-600" />
           {UNIFIED_ADMIN_HOST}
         </span>
-        <span className="text-slate-600" aria-hidden="true">/</span>
-        <span className="text-slate-200 font-semibold">
+        <span className="text-slate-300" aria-hidden="true">/</span>
+        <span className="text-slate-900 font-bold text-sm">
           {TAB_LABELS[activeTab] || 'کنسول مدیریت'}
         </span>
-        <span className="text-slate-600 hidden sm:inline" aria-hidden="true">·</span>
-        <span className="text-slate-400 hidden sm:inline">
-          {isSuperAdmin ? 'دسترسی راهبر کل (Super Admin)' : `مدیر مستأجر (${currentUser?.tenantName || 'smslocal'})`}
-        </span>
       </div>
 
-      {/* Zone 2: Tenant Target Selector (Interactive Control for Super Admin, Unboxed Metadata for Tenant Admin) */}
-      <div className="hidden md:flex items-center gap-3">
-        <span className="text-xs text-slate-400 whitespace-nowrap">قلمرو مستأجر هدف:</span>
-        {isSuperAdmin && tenants.length > 0 ? (
-          <div className="relative inline-block">
-            <select
-              id="select-tenant-switcher"
-              value={activeTenantId || ''}
-              onChange={(e) => onTenantSwitch && onTenantSwitch(e.target.value)}
-              className="bg-slate-900 text-slate-100 border border-slate-700/80 hover:border-sky-500/60 text-xs rounded-lg px-3 py-1.5 font-medium outline-none cursor-pointer focus:ring-2 focus:ring-sky-500/40 appearance-none pr-3 pl-8 transition-colors whitespace-nowrap"
-            >
-              {tenants.map((t) => (
-                <option key={t.id} value={t.id} className="bg-slate-900 text-slate-100">
-                  {t.name} — ID {t.id} ({t.code})
-                </option>
-              ))}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center px-2.5 text-slate-400">
-              <ChevronDown className="w-3.5 h-3.5" />
+      {/* Zone 2: Target Tenant Scope Switcher & Color Palette Bar */}
+      <div className="hidden md:flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-slate-600 flex items-center gap-1.5 whitespace-nowrap">
+            <Building2 className="w-3.5 h-3.5 text-indigo-600" />
+            <span>قلمرو مستأجر هدف:</span>
+          </span>
+          {isSuperAdmin && tenants.length > 0 ? (
+            <div className="relative inline-block">
+              <select
+                id="select-tenant-switcher"
+                value={activeTenantId || ''}
+                onChange={(e) => onTenantSwitch && onTenantSwitch(e.target.value)}
+                className="bg-slate-50 hover:bg-slate-100 text-slate-900 border border-slate-300 text-xs rounded-lg px-3.5 py-1.5 font-bold outline-none cursor-pointer focus:border-indigo-600 appearance-none pr-3.5 pl-8 transition-colors whitespace-nowrap"
+              >
+                {tenants.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} — #{t.id} ({t.code})
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center px-2.5 text-slate-500">
+                <ChevronDown className="w-3.5 h-3.5" />
+              </div>
             </div>
-          </div>
-        ) : (
-          <div id="header-tenant-name" className="text-xs text-slate-300 font-medium whitespace-nowrap">
-            <span>{activeTenantObj?.name || currentUser?.tenantName || 'smslocal'}</span>
-            <span className="mx-1.5 text-slate-600">·</span>
-            <span className="font-mono text-slate-400 tabular-nums">Tenant #{currentUser?.tenantId || 10}</span>
-          </div>
-        )}
+          ) : (
+            <div className="text-xs text-slate-800 font-semibold whitespace-nowrap bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg">
+              <span>{activeTenantObj?.name || currentUser?.tenantName || 'smslocal'}</span>
+              <span className="mx-1.5 text-slate-400">·</span>
+              <span className="font-mono text-indigo-600 tabular-nums">
+                Tenant #{currentUser?.tenantId || 10}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Quick Palette Swatches */}
+        <div className="hidden xl:flex items-center gap-1.5 bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1">
+          <Palette className="w-3.5 h-3.5 text-indigo-600 ml-1" />
+          {palettes.map((p) => {
+            const isSelected = p.id === paletteId;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setPaletteId(p.id)}
+                title={`تم رنگ: ${p.name}`}
+                className={`px-2 py-1 rounded-md text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  isSelected
+                    ? 'bg-white text-slate-900 shadow-sm border border-slate-300'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <span
+                  className="w-2.5 h-2.5 rounded-full shrink-0"
+                  style={{ backgroundColor: p.primaryHex }}
+                />
+                <span>{p.name.split(' ')[0]}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Zone 3: Primary Actions & Identity */}
-      <div className="flex items-center gap-3 shrink-0">
-        <button
-          onClick={onOpenClaimsModal}
-          id="btn-jwt-claims"
-          className="bg-slate-900 hover:bg-slate-800 text-slate-200 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors border border-slate-800 whitespace-nowrap shrink-0 cursor-pointer"
-          title="مشاهده زنده کلیم‌های توکن JWT"
-        >
-          <KeyRound className="w-3.5 h-3.5 text-sky-400" />
-          <span className="hidden sm:inline">توکن JWT</span>
-        </button>
-
-        <div className="hidden lg:flex items-center gap-2 text-xs text-slate-300 px-2 border-r border-slate-800 pr-3 whitespace-nowrap">
-          <span id="header-user-display" className="font-semibold text-slate-100">
+      {/* Zone 3: Identity, JWT Claims Inspector & Logout */}
+      <div className="flex items-center gap-2.5 shrink-0">
+        <div className="hidden lg:flex items-center gap-2 text-xs text-slate-700 pl-2 border-l border-slate-200 whitespace-nowrap">
+          <span className="font-bold text-slate-900">
             {currentUser?.displayName || currentUser?.username}
           </span>
-          <span className="text-slate-600">·</span>
-          <span id="active-role-badge" className="font-mono text-slate-400">
+          <span className="text-slate-300">·</span>
+          <span className="font-mono text-indigo-600 font-bold">
             @{currentUser?.username}
           </span>
         </div>
 
         <button
+          type="button"
+          onClick={onOpenClaimsModal}
+          id="btn-jwt-claims"
+          className="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+        >
+          <KeyRound className="w-3.5 h-3.5 text-indigo-600" />
+          <span>کلیم‌های JWT</span>
+        </button>
+
+        <button
+          type="button"
           id="btn-logout"
           onClick={onLogout}
-          className="bg-slate-900 hover:bg-rose-950/60 text-slate-300 hover:text-rose-200 border border-slate-800 hover:border-rose-800/70 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-          title="خروج از درگاه یکپارچه admin.asan.com"
+          className="bg-white hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-300 hover:border-rose-300 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
         >
-          <LogOut className="w-3.5 h-3.5 text-rose-400" />
+          <LogOut className="w-3.5 h-3.5 text-rose-600" />
           <span>خروج</span>
         </button>
       </div>

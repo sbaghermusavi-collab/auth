@@ -1,5 +1,11 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import tailwindcss from 'tailwindcss';
+import autoprefixer from 'autoprefixer';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 function createJwt(payload) {
   const header = { alg: 'HS256', typ: 'JWT' };
@@ -918,12 +924,125 @@ function iamBffMockPlugin() {
         return sendJson(201, newPerm);
       }
 
+      const permIdMatch = url.match(/^\/api\/admin\/permissions\/(\d+)$/);
+      if (permIdMatch) {
+        const pid = Number(permIdMatch[1]);
+        const pIdx = permissionsCatalog.findIndex((p) => p.id === pid);
+        if (pIdx === -1) return sendJson(404, { message: 'پرمیژن یافت نشد' });
+
+        if (req.method === 'GET') {
+          return sendJson(200, permissionsCatalog[pIdx]);
+        }
+        if (req.method === 'PUT') {
+          const body = await parseBody(req);
+          permissionsCatalog[pIdx] = {
+            ...permissionsCatalog[pIdx],
+            code: body.code ? body.code.trim() : permissionsCatalog[pIdx].code,
+            name: body.name ? body.name.trim() : permissionsCatalog[pIdx].name,
+            description: body.description !== undefined ? body.description : permissionsCatalog[pIdx].description,
+            groupCode: body.groupCode || permissionsCatalog[pIdx].groupCode,
+            active: body.active !== undefined ? Boolean(body.active) : permissionsCatalog[pIdx].active
+          };
+          return sendJson(200, permissionsCatalog[pIdx]);
+        }
+        if (req.method === 'DELETE') {
+          const removed = permissionsCatalog.splice(pIdx, 1)[0];
+          Object.values(tenantEntitledPermIds).forEach((s) => s.delete(pid));
+          roles.forEach((r) => {
+            r.permissions = (r.permissions || []).filter((c) => c !== removed.code);
+          });
+          return sendJson(200, { deleted: true, id: pid });
+        }
+      }
+
+      const tenantDefaultRoleMatch = url.match(/^\/api\/admin\/tenants\/(\d+)\/default-role$/);
+      if (req.method === 'PUT' && tenantDefaultRoleMatch) {
+        const tid = Number(tenantDefaultRoleMatch[1]);
+        const body = await parseBody(req);
+        const t = tenants.find((item) => item.id === tid);
+        if (!t) return sendJson(404, { message: 'مستأجر یافت نشد' });
+        t.defaultRoleId = Number(body.defaultRoleId);
+        roles.forEach((r) => {
+          if (r.tenantId === tid) {
+            r.isDefault = r.id === t.defaultRoleId;
+          }
+        });
+        return sendJson(200, { tenantId: tid, defaultRoleId: t.defaultRoleId });
+      }
+
+      const tenantImpersonateMatch = url.match(/^\/api\/admin\/tenants\/(\d+)\/impersonate$/);
+      if (req.method === 'POST' && tenantImpersonateMatch) {
+        const tid = Number(tenantImpersonateMatch[1]);
+        const t = tenants.find((item) => item.id === tid);
+        if (!t) return sendJson(404, { message: 'مستأجر یافت نشد' });
+        const targetAdmin =
+          users.find((u) => u.tenantId === tid && u.roles.includes('TENANT_ADMIN')) ||
+          users.find((u) => u.tenantId === tid);
+        if (!targetAdmin) return sendJson(404, { message: 'کاربر ادمین برای این مستأجر یافت نشد' });
+        const impToken = createJwt({
+          iss: 'https://admin.asan.com/auth',
+          aud: 'admin.asan.com',
+          sub: String(targetAdmin.id),
+          preferred_username: targetAdmin.username,
+          username: targetAdmin.username,
+          tenant_numeric_id: targetAdmin.tenantId,
+          tenant_id: t.code,
+          roles: targetAdmin.roles,
+          permissions: computeUserEffectivePermissions(targetAdmin),
+          is_impersonated: true,
+          act: { sub: '999', username: 'superadmin', tenant_id: '1' },
+          iat: Math.floor(Date.now() / 1000),
+          exp: Math.floor(Date.now() / 1000) + 3600
+        });
+        return sendJson(200, {
+          status: 'SUCCESS',
+          isImpersonated: true,
+          targetUsername: targetAdmin.username,
+          tenantId: tid,
+          accessToken: impToken
+        });
+      }
+
       if (req.method === 'GET' && url === '/api/admin/permission-groups') {
         const enrichedGroups = permissionGroupsCatalog.map((g) => ({
           ...g,
           permissions: permissionsCatalog.filter((p) => p.groupCode === g.code)
         }));
         return sendJson(200, enrichedGroups);
+      }
+
+      if (req.method === 'POST' && url === '/api/admin/permission-groups') {
+        const body = await parseBody(req);
+        const newGrp = {
+          id: Math.max(...permissionGroupsCatalog.map((g) => g.id)) + 1,
+          code: (body.code || `GRP_${Date.now()}`).toUpperCase().trim(),
+          name: body.name || body.code,
+          description: body.description || 'گروه مجوزهای سیستمی',
+          tenantId: Number(body.tenantId || 1)
+        };
+        permissionGroupsCatalog.push(newGrp);
+        tenantEntitledGroupIds[1].add(newGrp.id);
+        return sendJson(201, { ...newGrp, permissions: [] });
+      }
+
+      const grpIdMatch = url.match(/^\/api\/admin\/permission-groups\/(\d+)$/);
+      if (grpIdMatch) {
+        const gid = Number(grpIdMatch[1]);
+        const gIdx = permissionGroupsCatalog.findIndex((g) => g.id === gid);
+        if (gIdx === -1) return sendJson(404, { message: 'گروه پرمیژن یافت نشد' });
+        if (req.method === 'PUT') {
+          const body = await parseBody(req);
+          permissionGroupsCatalog[gIdx] = {
+            ...permissionGroupsCatalog[gIdx],
+            name: body.name || permissionGroupsCatalog[gIdx].name,
+            description: body.description !== undefined ? body.description : permissionGroupsCatalog[gIdx].description
+          };
+          return sendJson(200, permissionGroupsCatalog[gIdx]);
+        }
+        if (req.method === 'DELETE') {
+          permissionGroupsCatalog.splice(gIdx, 1);
+          return sendJson(200, { deleted: true, id: gid });
+        }
       }
 
       const tenantPermsMatch = url.match(/^\/api\/admin\/tenants\/(\d+)\/permissions$/);
@@ -1430,6 +1549,85 @@ function iamBffMockPlugin() {
         return sendJson(200, { revoked: true, sessionId: sid });
       }
 
+      if (req.method === 'DELETE' && url === '/api/sessions/all-other') {
+        const before = activeSessions.length;
+        activeSessions = activeSessions.filter((s) => s.current === true);
+        return sendJson(200, { revokedCount: Math.max(0, before - activeSessions.length) });
+      }
+
+      // 13. Hierarchical User Groups (/api/groups & /api/groups/:id/permissions)
+      if (!globalThis.__asanUserGroups) {
+        globalThis.__asanUserGroups = [
+          {
+            id: 501,
+            name: 'تیم بازاریابی پیامکی و کمپین (شعبه مرکزی)',
+            tenantId: 10,
+            fatherUserId: 110,
+            fatherUsername: 'sms_admin',
+            permissions: ['sms.smr.getSmsStats', 'Campaign', 'sms.sendSingle', 'Contacts_Customers']
+          },
+          {
+            id: 502,
+            name: 'واحد پشتیبانی مشتریان و تیکتینگ',
+            tenantId: 10,
+            fatherUserId: 110,
+            fatherUsername: 'sms_admin',
+            permissions: ['Contacts_Customers', 'USER_READ']
+          },
+          {
+            id: 503,
+            name: 'گروه عملیات ارتباطات ابری آسان‌لوکال',
+            tenantId: 20,
+            fatherUserId: 210,
+            fatherUsername: 'asan_admin',
+            permissions: ['sms.smr.getSmsStats', 'Contacts_Customers', 'finance.wallet.view']
+          }
+        ];
+      }
+      const userGroups = globalThis.__asanUserGroups;
+
+      if (req.method === 'GET' && url === '/api/groups') {
+        const qTid = query.get('tenantId') ? Number(query.get('tenantId')) : null;
+        const list = qTid && qTid !== 1 ? userGroups.filter((g) => g.tenantId === qTid) : userGroups;
+        return sendJson(200, list);
+      }
+
+      if (req.method === 'POST' && url === '/api/groups') {
+        const body = await parseBody(req);
+        const tid = Number(body.tenantId || 10);
+        const fatherId = Number(body.fatherUserId || 110);
+        const father = users.find((u) => u.id === fatherId);
+        const createdGroup = {
+          id: Date.now(),
+          name: body.name || 'گروه کاربری جدید',
+          tenantId: tid,
+          fatherUserId: fatherId,
+          fatherUsername: father ? father.username : 'sms_admin',
+          permissions: Array.isArray(body.permissions) ? body.permissions : []
+        };
+        userGroups.push(createdGroup);
+        return sendJson(201, createdGroup);
+      }
+
+      const userGroupPermMatch = url.match(/^\/api\/groups\/(\d+)\/permissions$/);
+      if (req.method === 'POST' && userGroupPermMatch) {
+        const gid = Number(userGroupPermMatch[1]);
+        const body = await parseBody(req);
+        const grp = userGroups.find((g) => g.id === gid);
+        if (!grp) return sendJson(404, { message: 'گروه کاربری یافت نشد' });
+        const permObj =
+          permissionsCatalog.find((p) => p.id === Number(body.permissionId)) ||
+          permissionsCatalog.find((p) => p.code === body.permissionCode);
+        if (!permObj) return sendJson(404, { message: 'پرمیژن یافت نشد' });
+
+        if (!grp.permissions.includes(permObj.code)) {
+          grp.permissions.push(permObj.code);
+        } else if (body.toggle) {
+          grp.permissions = grp.permissions.filter((c) => c !== permObj.code);
+        }
+        return sendJson(200, grp);
+      }
+
       return next();
     });
   };
@@ -1447,6 +1645,55 @@ function iamBffMockPlugin() {
 
 export default defineConfig({
   plugins: [react(), iamBffMockPlugin()],
+  css: {
+    postcss: {
+      plugins: [
+        tailwindcss({
+          content: [
+            path.resolve(__dirname, './index.html'),
+            path.resolve(__dirname, './src/**/*.{js,ts,jsx,tsx}')
+          ],
+          theme: {
+            extend: {
+              fontFamily: {
+                sans: ['Vazirmatn', 'Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+                vazir: ['Vazirmatn', 'system-ui', 'sans-serif'],
+                mono: ['JetBrains Mono', 'monospace']
+              },
+              colors: {
+                indigo: {
+                  50: 'rgb(var(--c-brand-50) / <alpha-value>)',
+                  100: 'rgb(var(--c-brand-100) / <alpha-value>)',
+                  200: 'rgb(var(--c-brand-200) / <alpha-value>)',
+                  300: 'rgb(var(--c-brand-300) / <alpha-value>)',
+                  400: 'rgb(var(--c-brand-400) / <alpha-value>)',
+                  500: 'rgb(var(--c-brand-500) / <alpha-value>)',
+                  600: 'rgb(var(--c-brand-600) / <alpha-value>)',
+                  700: 'rgb(var(--c-brand-700) / <alpha-value>)',
+                  800: 'rgb(var(--c-brand-800) / <alpha-value>)',
+                  900: 'rgb(var(--c-brand-900) / <alpha-value>)'
+                },
+                slate: {
+                  50: 'rgb(var(--c-neutral-50) / <alpha-value>)',
+                  100: 'rgb(var(--c-neutral-100) / <alpha-value>)',
+                  200: 'rgb(var(--c-neutral-200) / <alpha-value>)',
+                  300: 'rgb(var(--c-neutral-300) / <alpha-value>)',
+                  400: 'rgb(var(--c-neutral-400) / <alpha-value>)',
+                  500: 'rgb(var(--c-neutral-500) / <alpha-value>)',
+                  600: 'rgb(var(--c-neutral-600) / <alpha-value>)',
+                  700: 'rgb(var(--c-neutral-700) / <alpha-value>)',
+                  800: 'rgb(var(--c-neutral-800) / <alpha-value>)',
+                  900: 'rgb(var(--c-neutral-900) / <alpha-value>)'
+                }
+              }
+            }
+          },
+          plugins: []
+        }),
+        autoprefixer()
+      ]
+    }
+  },
   server: {
     port: 3000,
     host: '0.0.0.0',

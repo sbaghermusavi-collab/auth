@@ -1,397 +1,385 @@
 import React, { useState } from 'react';
 import {
-  Shield,
-  KeyRound,
   Lock,
-  User,
+  Smartphone,
   ArrowLeft,
   CheckCircle2,
   AlertCircle,
-  Loader2,
+  KeyRound,
   Globe,
   Building2,
-  Layers
+  Zap,
+  Palette
 } from 'lucide-react';
 import { iamApi, UNIFIED_ADMIN_HOST } from '../api/iamService';
+import { useTenantTheme } from '../context/TenantThemeContext';
+
+const QUICK_ADMIN_PRESETS = [
+  {
+    id: 'superadmin',
+    label: 'سوپرادمین کل پلتفرم (Super Admin)',
+    username: 'superadmin',
+    phone: '09120000000',
+    tenantLabel: 'دسترسی سراسری (Tenant 1 + سوییچ بین تمامی مستأجرین)',
+    desc: 'مدیریت مستأجرین، کلونینگ، تعیین استحقاق پرمیژن‌های هر مستأجر و مدیریت کل کاربران'
+  },
+  {
+    id: 'sms_admin',
+    label: 'ادمین مستأجر پیامک (Tenant Admin — smslocal)',
+    username: 'sms_admin',
+    phone: '09121110000',
+    tenantLabel: 'سامانه پیامک سازمانی (Tenant #10 — smslocal)',
+    desc: 'مدیریت کاربران، نقش‌های سفارشی و پرمیژن‌های مستقیم در چارچوب استحقاق مستأجر ۱۰'
+  },
+  {
+    id: 'asan_admin',
+    label: 'ادمین مستأجر آسان‌لوکال (Tenant Admin — asanlocal)',
+    username: 'asan_admin',
+    phone: '09122220000',
+    tenantLabel: 'ارتباطات ابری آسان‌لوکال (Tenant #20 — asanlocal)',
+    desc: 'مدیریت کاربران و نقش‌های اختصاصی مستأجر ۲۰ با گارد مرزبندی امنیتی'
+  }
+];
 
 export default function LoginPage({ onLoginSuccess }) {
-  const [identifier, setIdentifier] = useState('superadmin');
-  const [password, setPassword] = useState('password');
-  const [phone, setPhone] = useState('09199999999');
+  const [step, setStep] = useState(1);
+  const [identifier, setIdentifier] = useState('09120000000');
+  const [password, setPassword] = useState('admin123');
+  const [authSessionId, setAuthSessionId] = useState('');
+  const [phoneNumbers, setPhoneNumbers] = useState(['09120000000']);
+  const [selectedPhone, setSelectedPhone] = useState('09120000000');
   const [otpCode, setOtpCode] = useState('999999');
-  const [step, setStep] = useState('CREDENTIALS'); // 'CREDENTIALS' | 'OTP'
-  const [authSessionId, setAuthSessionId] = useState(null);
+  const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
 
-  const handleQuickSelect = (userType) => {
-    setError(null);
-    if (userType === 'superadmin') {
-      setIdentifier('superadmin');
-      setPassword('password');
-      setPhone('09199999999');
-    } else if (userType === 'sms_admin') {
-      setIdentifier('09121110000');
-      setPassword('password');
-      setPhone('09121110000');
-    } else if (userType === 'asan_admin') {
-      setIdentifier('09122220000');
-      setPassword('password');
-      setPhone('09122220000');
-    }
-  };
+  const { paletteId, palettes, setPaletteId } = useTenantTheme();
 
-  const handleInstantLogin = async (targetIdentifier, targetPhone) => {
+  const handleQuickLogin = async (preset) => {
+    setError('');
     setLoading(true);
-    setError(null);
+    setIdentifier(preset.phone);
     try {
-      const loginRes = await iamApi.login(targetIdentifier, 'password');
+      const loginRes = await iamApi.login(preset.phone, 'admin123');
       const sessionId = loginRes.authSessionId;
-      await iamApi.sendOtp(sessionId, targetPhone);
+      const phone = loginRes.phoneNumbers?.[0] || preset.phone;
+      await iamApi.sendOtp(sessionId, phone);
       const { user } = await iamApi.verify2fa(sessionId, '999999');
       onLoginSuccess(user);
     } catch (err) {
-      setError(err.message || 'خطا در ورود سریع به درگاه admin.asan.com');
+      setError(err.message || 'خطا در ورود سریع');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCredentialsSubmit = async (e) => {
+  const handleStep1Submit = async (e) => {
     e.preventDefault();
+    setError('');
     setLoading(true);
-    setError(null);
-
     try {
-      const loginRes = await iamApi.login(identifier, password);
-      const sessionId = loginRes.authSessionId;
-      setAuthSessionId(sessionId);
-
-      const phoneToSend = phone || (identifier.startsWith('09') ? identifier : '09121110000');
-      await iamApi.sendOtp(sessionId, phoneToSend);
-
-      setStep('OTP');
+      const res = await iamApi.login(identifier, password);
+      setAuthSessionId(res.authSessionId);
+      const phones =
+        res.phoneNumbers && res.phoneNumbers.length > 0 ? res.phoneNumbers : [identifier];
+      setPhoneNumbers(phones);
+      setSelectedPhone(phones[0]);
+      setStep(2);
     } catch (err) {
-      setError(err.message || 'خطا در برقراری ارتباط با سرور احراز هویت');
+      setError(err.message || 'نام کاربری یا رمز عبور اشتباه است.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleOtpSubmit = async (e) => {
-    e.preventDefault();
+  const handleSendOtp = async () => {
+    setError('');
     setLoading(true);
-    setError(null);
-
     try {
+      await iamApi.sendOtp(authSessionId, selectedPhone);
+      setOtpSent(true);
+    } catch (err) {
+      setError(err.message || 'خطا در ارسال پیامک تایید');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      if (!otpSent) {
+        await iamApi.sendOtp(authSessionId, selectedPhone);
+      }
       const { user } = await iamApi.verify2fa(authSessionId, otpCode);
       onLoginSuccess(user);
     } catch (err) {
-      setError(err.message || 'کد تایید دو مرحله‌ای نامعتبر است');
+      setError(err.message || 'کد ۶ رقمی وارد شده معتبر نیست');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#0b0f17] text-slate-100 flex items-stretch font-sans" dir="rtl">
-      <div className="w-full max-w-[1440px] mx-auto grid grid-cols-1 lg:grid-cols-12 min-h-screen">
-        {/* Right Column: Unified Host Architecture & Role Capabilities */}
-        <div className="lg:col-span-7 p-8 lg:p-14 flex flex-col justify-between border-b lg:border-b-0 lg:border-l border-slate-800/80 bg-[#0d131f]">
-          <div>
-            {/* Unified Host Header */}
-            <div className="flex items-center gap-3 mb-10">
-              <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
-                <Globe className="w-5 h-5" />
+    <div
+      className="min-h-screen bg-theme-canvas text-slate-900 flex flex-col justify-center items-center p-4 md:p-8"
+      dir="rtl"
+    >
+      {/* Top Palette Switcher Bar */}
+      <div className="max-w-5xl w-full mb-4 bg-theme-card border border-slate-200 rounded-xl px-4 py-2.5 shadow-sm flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
+          <Palette className="w-4 h-4 text-indigo-600" />
+          <span>انتخاب پالت رنگ کنسول مدیریت:</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {palettes.map((p) => {
+            const active = p.id === paletteId;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setPaletteId(p.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 border transition-all cursor-pointer ${
+                  active
+                    ? 'bg-indigo-600 border-indigo-700 text-white shadow-sm'
+                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                }`}
+              >
+                <span
+                  className="w-3 h-3 rounded-full shrink-0 border border-white/60"
+                  style={{ backgroundColor: p.primaryHex }}
+                />
+                <span>{p.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="max-w-5xl w-full grid grid-cols-1 lg:grid-cols-12 bg-theme-card border border-slate-300 rounded-2xl overflow-hidden shadow-xl">
+        {/* Right Column: Unified Host Architecture & Quick Role Login */}
+        <div className="lg:col-span-7 p-8 bg-theme-sidebar text-stone-100 flex flex-col justify-between space-y-6">
+          <div className="space-y-5">
+            <div className="flex items-center justify-between border-b border-theme-sidebar pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-600 border border-amber-400/30 flex items-center justify-center text-white shadow-sm">
+                  <Globe className="w-5 h-5" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold text-stone-100 tracking-tight">
+                    درگاه یکپارچه مدیریت آسان
+                  </h1>
+                  <p className="text-xs font-mono text-amber-400">
+                    Host: https://{UNIFIED_ADMIN_HOST}
+                  </p>
+                </div>
               </div>
-              <div>
-                <div className="text-sm font-bold text-white">پلتفرم مدیریت هویت و دسترسی آسان</div>
-                <div className="text-xs font-mono text-sky-400">https://{UNIFIED_ADMIN_HOST}</div>
-              </div>
+              <span className="text-xs font-mono text-stone-400">SSO + 2FA BFF</span>
             </div>
 
-            <h1 className="text-2xl lg:text-4xl font-extrabold text-white tracking-tight leading-tight max-w-2xl mb-4">
-              درگاه واحد راهبری مستأجرین، کاربران و ماتریس استحقاق پرمیژن‌ها
-            </h1>
-            <p className="text-sm text-slate-400 leading-relaxed max-w-2xl mb-10">
-              کلیه مدیران مستأجرین (Tenant Admins) و راهبران کل (Super Admins) از طریق آدرس یکپارچه{' '}
-              <code className="text-sky-300 font-mono">{UNIFIED_ADMIN_HOST}</code> وارد شده و بر اساس سطح دسترسی توکن JWT، مجوزهای کاربران و استحقاق ماژول‌های هر مستأجر را مدیریت می‌کنند.
+            <p className="text-xs text-stone-300 leading-relaxed">
+              تمامی مدیران ارشد (<strong className="text-amber-300 font-mono">SUPER_ADMIN</strong>) و مدیران مستأجرین (<strong className="text-amber-300 font-mono">TENANT_ADMIN</strong>) از طریق آدرس واحد{' '}
+              <code className="font-mono text-amber-300">{UNIFIED_ADMIN_HOST}</code> وارد می‌شوند. برای تست فوری هر نقش، روی یکی از حساب‌های زیر کلیک کنید:
             </p>
 
-            {/* Architecture Capabilities List */}
-            <div className="space-y-4 max-w-2xl">
-              <div className="p-4 rounded-xl bg-[#111827] border border-slate-800/80">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-sm font-bold text-slate-100 flex items-center gap-2">
-                    <Shield className="w-4 h-4 text-sky-400" />
-                    <span>راهبر کل پلتفرم (Super Admin)</span>
-                  </span>
-                  <span className="text-xs font-mono text-sky-400">Global Scope · Tenant #1</span>
-                </div>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  اعطا یا سلب پرمیژن‌ها و گروه‌های دسترسی از هر مستأجر، تعریف و کلون مستأجر جدید، تغییر ماژول‌های فعال و مدیریت فراگیر کاربران در تمامی مستأجرین.
-                </p>
+            {/* Instant 1-Click Role Switcher Cards */}
+            <div className="space-y-2.5">
+              <div className="text-xs font-semibold text-stone-200 flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5 text-amber-400" />
+                <span>ورود سریع یک‌کلیکی (One-Click Demo Presets):</span>
               </div>
 
-              <div className="p-4 rounded-xl bg-[#111827] border border-slate-800/80">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-sm font-bold text-slate-100 flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-emerald-400" />
-                    <span>مدیر ارشد مستأجر (Tenant Admin)</span>
-                  </span>
-                  <span className="text-xs font-mono text-emerald-400">Scoped · Tenant #10 / #20</span>
-                </div>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  مدیریت کاربران زیرمجموعه، تخصیص نقش‌ها و پرمیژن‌های مستقیم به هر کاربر (محدود به سقف استحقاق مستأجر)، اتصال یک‌کلیکی گروه‌های دسترسی به نقش‌ها و جعل هویت مجاز RFC 8693.
-                </p>
+              <div className="space-y-2.5">
+                {QUICK_ADMIN_PRESETS.map((preset) => (
+                  <div
+                    key={preset.id}
+                    className="p-3.5 rounded-xl bg-theme-sidebar-card border border-theme-sidebar hover:border-amber-400/60 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-stone-100">{preset.label}</span>
+                        <span className="text-stone-600">·</span>
+                        <span className="font-mono text-[11px] text-amber-400">
+                          @{preset.username}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-stone-300 flex items-center gap-1.5">
+                        <Building2 className="w-3 h-3 text-amber-400 shrink-0" />
+                        <span>{preset.tenantLabel}</span>
+                      </div>
+                      <p className="text-[11px] text-stone-400">{preset.desc}</p>
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={() => handleQuickLogin(preset)}
+                      className="px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shrink-0 cursor-pointer transition-colors whitespace-nowrap shadow-sm"
+                    >
+                      ورود آنی با این نقش
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
 
-          <div className="pt-8 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-500">
-            <span>میزبان واحد: {UNIFIED_ADMIN_HOST}</span>
-            <span>·</span>
-            <span>احراز هویت دو مرحله‌ای (OTP + HttpOnly BFF Relay)</span>
-            <span>·</span>
-            <span className="font-mono tabular-nums">RFC 8693 Compliant</span>
+          <div className="pt-4 border-t border-theme-sidebar flex flex-wrap items-center justify-between gap-2 text-[11px] text-stone-400 font-mono">
+            <span>POST /api/auth/login → /api/auth/send-otp → /api/auth/verify-2fa</span>
+            <span className="text-amber-300">OTP: 999999</span>
           </div>
         </div>
 
-        {/* Left Column: Authentication Form */}
-        <div className="lg:col-span-5 p-8 lg:p-12 flex flex-col justify-center bg-[#0b0f17]">
-          <div className="w-full max-w-md mx-auto">
-            <div className="mb-6">
-              <div className="text-xs font-mono text-sky-400 mb-1">
-                AUTH GATEWAY · {UNIFIED_ADMIN_HOST}
-              </div>
-              <h2 className="text-xl font-bold text-white">ورود به کنسول مدیریت</h2>
-              <p className="text-xs text-slate-400 mt-1">
-                مشخصات کاربری ادمین مستأجر یا سوپرادمین را وارد نمایید
-              </p>
+        {/* Left Column: 2-Step Authentication Form */}
+        <div className="lg:col-span-5 p-8 flex flex-col justify-center bg-theme-card">
+          <div className="mb-6">
+            <div className="text-xs font-mono text-indigo-600 font-bold mb-1">
+              {step === 1 ? 'STEP 01 / CREDENTIALS' : 'STEP 02 / SMS 2FA VERIFICATION'}
             </div>
-
-            {error && (
-              <div
-                id="login-error-alert"
-                className="mb-5 p-3.5 bg-rose-950/60 border border-rose-800/80 rounded-xl text-rose-200 text-xs flex items-center gap-2.5"
-              >
-                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            {step === 'CREDENTIALS' ? (
-              <form onSubmit={handleCredentialsSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                    نام کاربری یا شماره موبایل ادمین
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="input-login-identifier"
-                      type="text"
-                      required
-                      value={identifier}
-                      onChange={(e) => setIdentifier(e.target.value)}
-                      placeholder="superadmin یا 09121110000"
-                      className="w-full bg-[#111827] border border-slate-700/80 rounded-xl px-4 py-2.5 pl-10 text-slate-100 text-sm font-mono focus:outline-none focus:border-sky-500"
-                    />
-                    <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                    رمز عبور
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="input-login-password"
-                      type="password"
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full bg-[#111827] border border-slate-700/80 rounded-xl px-4 py-2.5 pl-10 text-slate-100 text-sm font-mono focus:outline-none focus:border-sky-500"
-                    />
-                    <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  id="btn-submit-login"
-                  disabled={loading}
-                  className="w-full bg-sky-600 hover:bg-sky-500 text-white font-semibold py-2.5 px-4 rounded-xl text-xs transition-colors flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>در حال بررسی اعتبار...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>ادامه و دریافت کد تایید دو مرحله‌ای (OTP)</span>
-                      <ArrowLeft className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
-
-                {/* Role Switcher Presets for Unified Host */}
-                <div className="pt-5 mt-5 border-t border-slate-800/80 space-y-2.5">
-                  <div className="flex items-center justify-between text-xs text-slate-400">
-                    <span>انتخاب حساب آزمایشی در {UNIFIED_ADMIN_HOST}:</span>
-                    <span className="font-mono text-[11px] text-slate-500">OTP: 999999</span>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div
-                      className={`p-3 rounded-xl border transition-colors flex items-center justify-between gap-2 ${
-                        identifier === 'superadmin'
-                          ? 'bg-sky-950/40 border-sky-500/60'
-                          : 'bg-[#111827] border-slate-800 hover:border-slate-700'
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        id="btn-quick-superadmin"
-                        onClick={() => handleQuickSelect('superadmin')}
-                        className="text-right flex-1 cursor-pointer"
-                      >
-                        <div className="text-xs font-bold text-slate-100">
-                          راهبر کل پلتفرم (Super Admin)
-                        </div>
-                        <div className="text-[11px] text-slate-400 font-mono mt-0.5">
-                          @superadmin · مدیریت پرمیژن‌های همه مستأجرین
-                        </div>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleInstantLogin('superadmin', '09199999999')}
-                        className="px-2.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-[11px] font-semibold whitespace-nowrap cursor-pointer"
-                      >
-                        ورود مستقیم
-                      </button>
-                    </div>
-
-                    <div
-                      className={`p-3 rounded-xl border transition-colors flex items-center justify-between gap-2 ${
-                        identifier === '09121110000'
-                          ? 'bg-sky-950/40 border-sky-500/60'
-                          : 'bg-[#111827] border-slate-800 hover:border-slate-700'
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        id="btn-quick-smsadmin"
-                        onClick={() => handleQuickSelect('sms_admin')}
-                        className="text-right flex-1 cursor-pointer"
-                      >
-                        <div className="text-xs font-bold text-slate-100">
-                          ادمین مستأجر پیامک (Tenant 10 — smslocal)
-                        </div>
-                        <div className="text-[11px] text-slate-400 font-mono mt-0.5">
-                          09121110000 · مدیریت کاربران و نقش‌های مستأجر ۱۰
-                        </div>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleInstantLogin('09121110000', '09121110000')}
-                        className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold whitespace-nowrap cursor-pointer"
-                      >
-                        ورود مستقیم
-                      </button>
-                    </div>
-
-                    <div
-                      className={`p-3 rounded-xl border transition-colors flex items-center justify-between gap-2 ${
-                        identifier === '09122220000'
-                          ? 'bg-sky-950/40 border-sky-500/60'
-                          : 'bg-[#111827] border-slate-800 hover:border-slate-700'
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        id="btn-quick-asanadmin"
-                        onClick={() => handleQuickSelect('asan_admin')}
-                        className="text-right flex-1 cursor-pointer"
-                      >
-                        <div className="text-xs font-bold text-slate-100">
-                          ادمین مستأجر آسان‌لوکال (Tenant 20 — asanlocal)
-                        </div>
-                        <div className="text-[11px] text-slate-400 font-mono mt-0.5">
-                          09122220000 · مدیریت کاربران و نقش‌های مستأجر ۲۰
-                        </div>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleInstantLogin('09122220000', '09122220000')}
-                        className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold whitespace-nowrap cursor-pointer"
-                      >
-                        ورود مستقیم
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </form>
-            ) : (
-              <form onSubmit={handleOtpSubmit} className="space-y-5">
-                <div className="p-3.5 bg-sky-950/40 border border-sky-800/60 rounded-xl text-sky-200 text-xs flex items-center gap-2.5">
-                  <CheckCircle2 className="w-4 h-4 text-sky-400 shrink-0" />
-                  <span>
-                    کد تایید دو مرحله‌ای برای نشست <code className="font-mono">{identifier}</code> ارسال شد.
-                  </span>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                    کد تایید ۶ رقمی (2FA OTP)
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="input-login-otp"
-                      type="text"
-                      required
-                      maxLength={6}
-                      value={otpCode}
-                      onChange={(e) => setOtpCode(e.target.value)}
-                      placeholder="999999"
-                      className="w-full bg-[#111827] border border-slate-700 rounded-xl px-4 py-2.5 pl-10 text-slate-100 text-center tracking-widest text-lg font-mono focus:outline-none focus:border-sky-500"
-                    />
-                    <KeyRound className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
-                  </div>
-                  <span className="text-[11px] text-slate-500 mt-1.5 block font-mono">
-                    Default Test OTP: 999999
-                  </span>
-                </div>
-
-                <div className="flex gap-2.5 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setStep('CREDENTIALS')}
-                    className="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 px-3 rounded-xl text-xs font-medium transition-colors cursor-pointer"
-                  >
-                    بازگشت
-                  </button>
-                  <button
-                    type="submit"
-                    id="btn-submit-otp"
-                    disabled={loading}
-                    className="w-2/3 bg-sky-600 hover:bg-sky-500 text-white font-semibold py-2.5 px-4 rounded-xl text-xs transition-colors flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>صدور توکن JWT...</span>
-                      </>
-                    ) : (
-                      <span>تایید و ورود به {UNIFIED_ADMIN_HOST}</span>
-                    )}
-                  </button>
-                </div>
-              </form>
-            )}
+            <h2 className="text-lg font-bold text-slate-900">
+              {step === 1 ? 'ورود با نام کاربری یا موبایل' : 'تایید دو مرحله‌ای (OTP)'}
+            </h2>
+            <p className="text-xs text-slate-500 mt-1">
+              {step === 1
+                ? `احراز هویت متمرکز در درگاه ${UNIFIED_ADMIN_HOST}`
+                : 'کد تایید ۶ رقمی ارسال شده به شماره همراه را وارد نمایید'}
+            </p>
           </div>
+
+          {error && (
+            <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2 font-medium">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {step === 1 ? (
+            <form onSubmit={handleStep1Submit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  شماره موبایل یا نام کاربری
+                </label>
+                <div className="relative">
+                  <Smartphone className="w-4 h-4 text-slate-400 absolute right-3.5 top-3" />
+                  <input
+                    id="input-identifier"
+                    type="text"
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl pr-10 pl-4 py-2.5 text-sm text-slate-900 font-mono focus:outline-none focus:border-indigo-600"
+                    placeholder="09120000000 یا superadmin"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  رمز عبور
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute right-3.5 top-3" />
+                  <input
+                    id="input-password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl pr-10 pl-4 py-2.5 text-sm text-slate-900 font-mono focus:outline-none focus:border-indigo-600"
+                    placeholder="••••••••"
+                    required
+                  />
+                </div>
+              </div>
+
+              <button
+                id="btn-login-step1"
+                type="submit"
+                disabled={loading}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-sm"
+              >
+                <span>{loading ? 'در حال بررسی...' : 'ادامه به مرحله تایید پیامکی'}</span>
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyOtp} className="space-y-4">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
+                <div className="text-slate-500">شناسه نشست موقت (PreAuthSession):</div>
+                <div className="font-mono text-indigo-600 font-bold truncate">{authSessionId}</div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  شماره موبایل مقصد OTP
+                </label>
+                <div className="flex gap-2">
+                  <select
+                    id="select-phone"
+                    value={selectedPhone}
+                    onChange={(e) => setSelectedPhone(e.target.value)}
+                    className="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono"
+                  >
+                    {phoneNumbers.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    id="btn-send-otp"
+                    type="button"
+                    onClick={handleSendOtp}
+                    disabled={loading}
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer whitespace-nowrap"
+                  >
+                    {otpSent ? 'ارسال مجدد' : 'ارسال کد پیامکی'}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  کد تایید ۶ رقمی (کد آزمایشی: 999999)
+                </label>
+                <div className="relative">
+                  <KeyRound className="w-4 h-4 text-slate-400 absolute right-3.5 top-3" />
+                  <input
+                    id="input-otp"
+                    type="text"
+                    maxLength={6}
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl pr-10 pl-4 py-2.5 text-center tracking-widest text-base font-bold text-indigo-600 font-mono focus:outline-none focus:border-indigo-600"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep(1);
+                    setOtpSent(false);
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer"
+                >
+                  بازگشت
+                </button>
+                <button
+                  id="btn-verify-otp"
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 bg-teal-700 hover:bg-teal-800 disabled:opacity-50 text-white font-semibold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-sm"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>{loading ? 'در حال صدور توکن...' : 'تایید و ورود به کنسول'}</span>
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
     </div>

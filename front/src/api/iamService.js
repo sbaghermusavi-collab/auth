@@ -1,14 +1,14 @@
 /**
  * Unified IAM & BFF Admin Service for admin.asan.com
- * Connects both Super Admin and Tenant Admins to:
- * - /api/auth/login, /api/auth/send-otp, /api/auth/verify-2fa
- * - /api/admin/tenants, /api/admin/tenants/:id/clone, /api/admin/modules
- * - /api/admin/tenants/:tenantId/permissions/:permissionId (Grant / Revoke)
- * - /api/admin/tenants/:tenantId/permission-groups/:groupId (Grant / Revoke Group)
- * - /api/admin/users, /api/tenant-admin/users, /api/admin/users/:id/roles
- * - /api/admin/roles, /api/admin/roles/:roleId/groups/:groupId
- * - /api/admin/impersonate, /api/admin/impersonate/revert
- * - /api/admin/audit-logs, /api/reports/users/:username/logs, /api/sessions/my
+ * Supports 100% of Backend Endpoints across:
+ * - AuthController (/api/auth/login, /api/auth/send-otp, /api/auth/verify-2fa, /logout)
+ * - TenantManagementController (/api/admin/tenants, /clone, /impersonate, /modules)
+ * - AdminController (/api/admin/permissions, /permission-groups, /tenants/:id/permissions, /roles, /users)
+ * - TenantAdminController (/api/tenant-admin/users)
+ * - GroupController (/api/groups, /api/groups/:id/permissions)
+ * - ImpersonationController (/api/auth/impersonate, /api/admin/impersonate, /revert)
+ * - SessionManagementController (/api/sessions/my, /api/sessions/:id, /api/sessions/all-other)
+ * - ReportController (/api/reports/users/:username/logs, /api/admin/audit-logs)
  */
 
 const TOKEN_KEY = 'iam_access_token';
@@ -277,6 +277,16 @@ export const iamApi = {
     return data;
   },
 
+  async deleteTenant(tenantId) {
+    const res = await fetch(`/api/admin/tenants/${tenantId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'خطا در حذف مستأجر');
+    return data;
+  },
+
   async cloneTenant(sourceTenantId, payload) {
     const res = await fetch(`/api/admin/tenants/${sourceTenantId}/clone`, {
       method: 'POST',
@@ -286,6 +296,43 @@ export const iamApi = {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'خطا در کلون کردن مستأجر');
     return data;
+  },
+
+  async setTenantDefaultRole(tenantId, defaultRoleId) {
+    const res = await fetch(`/api/admin/tenants/${tenantId}/default-role`, {
+      method: 'PUT',
+      headers: getAuthHeaders(tenantId),
+      body: JSON.stringify({ defaultRoleId })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'خطا در تعیین نقش پیش‌فرض مستأجر');
+    return data;
+  },
+
+  async impersonateTenant(tenantId) {
+    const res = await fetch(`/api/admin/tenants/${tenantId}/impersonate`, {
+      method: 'POST',
+      headers: getAuthHeaders(tenantId)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'خطا در ورود به مستأجر');
+    const newToken = data.accessToken;
+    const currentUser = getStoredUser();
+    const updatedUser = {
+      ...currentUser,
+      isImpersonated: true,
+      originalToken: getStoredToken(),
+      impersonatedToken: newToken,
+      actor: {
+        username: currentUser?.username || 'superadmin',
+        tenantId: currentUser?.tenantId || 1,
+        role: currentUser?.role || 'SUPER_ADMIN'
+      },
+      targetUsername: data.targetUsername
+    };
+    if (newToken) setStoredToken(newToken);
+    setStoredUser(updatedUser);
+    return updatedUser;
   },
 
   // --- Users & User Permissions ---
@@ -329,6 +376,22 @@ export const iamApi = {
       status: data.enabled !== false ? 'ACTIVE' : 'BLOCKED',
       enabled: data.enabled !== false
     };
+  },
+
+  async deleteUser(userId) {
+    const currentUser = getStoredUser();
+    const isSuper = currentUser?.role === 'SUPER_ADMIN';
+    const endpoint = isSuper
+      ? `/api/admin/users/${userId}`
+      : `/api/tenant-admin/users/${userId}`;
+    const res = await fetch(endpoint, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+      credentials: 'include'
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'خطا در حذف کاربر');
+    return data;
   },
 
   async toggleUserStatus(userId, currentEnabled) {
@@ -404,6 +467,17 @@ export const iamApi = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'خطا در بروزرسانی نقش');
+    return data;
+  },
+
+  async deleteRole(roleId) {
+    const res = await fetch(`/api/admin/roles/${roleId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+      credentials: 'include'
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'خطا در حذف نقش');
     return data;
   },
 
@@ -494,6 +568,85 @@ export const iamApi = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'خطا در تعریف پرمیژن جدید');
+    return data;
+  },
+
+  async updatePermission(permissionId, payload) {
+    const res = await fetch(`/api/admin/permissions/${permissionId}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+      credentials: 'include'
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'خطا در ویرایش پرمیژن');
+    return data;
+  },
+
+  async deletePermission(permissionId) {
+    const res = await fetch(`/api/admin/permissions/${permissionId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+      credentials: 'include'
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'خطا در حذف پرمیژن');
+    return data;
+  },
+
+  async createPermissionGroup(payload) {
+    const res = await fetch('/api/admin/permission-groups', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+      credentials: 'include'
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'خطا در ایجاد گروه پرمیژن');
+    return data;
+  },
+
+  async deletePermissionGroup(groupId) {
+    const res = await fetch(`/api/admin/permission-groups/${groupId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+      credentials: 'include'
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'خطا در حذف گروه پرمیژن');
+    return data;
+  },
+
+  // --- Hierarchical User Groups (/api/groups) ---
+  async getUserGroups(tenantId) {
+    const url = tenantId ? `/api/groups?tenantId=${tenantId}` : '/api/groups';
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: getAuthHeaders(tenantId)
+    });
+    if (!res.ok) return [];
+    return await res.json();
+  },
+
+  async createUserGroup(payload) {
+    const res = await fetch('/api/groups', {
+      method: 'POST',
+      headers: getAuthHeaders(payload.tenantId),
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'خطا در ایجاد گروه کاربری');
+    return data;
+  },
+
+  async assignPermissionToUserGroup(groupId, payload) {
+    const res = await fetch(`/api/groups/${groupId}/permissions`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'خطا در تخصیص مجوز به گروه کاربری');
     return data;
   },
 
@@ -597,6 +750,15 @@ export const iamApi = {
       headers: getAuthHeaders()
     });
     if (!res.ok) throw new Error('خطا در ابطال نشست');
+    return await res.json();
+  },
+
+  async revokeAllOtherSessions() {
+    const res = await fetch('/api/sessions/all-other', {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+    if (!res.ok) throw new Error('خطا در ابطال سایر نشست‌ها');
     return await res.json();
   }
 };

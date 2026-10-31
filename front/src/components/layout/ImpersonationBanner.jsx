@@ -1,39 +1,42 @@
 import React from 'react';
-import { Undo2, ShieldAlert } from 'lucide-react';
+import { ShieldAlert, RotateCcw } from 'lucide-react';
 
-export default function ImpersonationBanner({ isImpersonated, targetUser, actor, onRevert }) {
+export default function ImpersonationBanner({
+  isImpersonated,
+  targetUser,
+  actor,
+  onRevert
+}) {
   if (!isImpersonated) return null;
 
   return (
     <div
       id="impersonation-banner"
-      className="bg-amber-500 text-slate-950 px-6 py-2.5 text-xs font-medium flex items-center justify-between border-b border-amber-600 sticky top-0 z-50"
+      className="bg-amber-50 border-b border-amber-300 text-amber-950 px-6 py-2.5 flex flex-wrap items-center justify-between gap-4 text-xs"
     >
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex items-center gap-2 font-bold">
-          <ShieldAlert className="w-4 h-4 text-slate-950" />
-          <span>نشست جعل هویت فعال است (RFC 8693 Token Exchange)</span>
-        </div>
-        <span aria-hidden="true">·</span>
-        <div className="font-mono">
-          <span>کاربر هدف: </span>
-          <strong id="banner-target-user">@{targetUser}</strong>
-        </div>
-        <span aria-hidden="true" className="hidden sm:inline">·</span>
-        <div className="hidden sm:block font-mono">
-          <span>صادرکننده (Actor): </span>
-          <strong id="banner-actor-info">@{actor?.username || 'admin'}</strong>
-          <span> (Tenant #{actor?.tenantId || 1})</span>
+      <div className="flex items-center gap-2.5">
+        <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
+        <div>
+          <span className="font-bold">نشست جعل هویت فعال (RFC 8693 Token Exchange):</span>{' '}
+          <span>
+            شما با هویت ادمین اصلی{' '}
+            <code className="font-mono font-bold text-amber-900">
+              @{actor?.username || 'admin'}
+            </code>{' '}
+            در حال مشاهده و مدیریت سامانه از دیدگاه کاربر{' '}
+            <code className="font-mono font-bold text-indigo-700">@{targetUser}</code> هستید.
+          </span>
         </div>
       </div>
 
       <button
         id="btn-revert-impersonation"
+        type="button"
         onClick={onRevert}
-        className="bg-slate-950 hover:bg-slate-900 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+        className="bg-amber-600 hover:bg-amber-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 whitespace-nowrap"
       >
-        <Undo2 className="w-3.5 h-3.5 text-amber-400" />
-        <span>پایان جعل هویت و بازگشت به ادمین</span>
+        <RotateCcw className="w-3.5 h-3.5" />
+        <span>بازگشت به نشست اصلی ادمین (POST /api/admin/impersonate/revert)</span>
       </button>
     </div>
   );

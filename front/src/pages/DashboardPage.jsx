@@ -4,11 +4,12 @@ import {
   ShieldCheck,
   Key,
   Building2,
-  Lock,
   Globe,
   ArrowLeft,
+  CheckCircle2,
+  XCircle,
   Layers,
-  CheckCircle2
+  SlidersHorizontal
 } from 'lucide-react';
 import { UNIFIED_ADMIN_HOST } from '../api/iamService';
 
@@ -46,403 +47,401 @@ export default function DashboardPage({
 
   return (
     <div className="space-y-6">
-      {/* Unified Host Context Banner */}
-      <div className="bg-[#111827] p-6 rounded-2xl border border-slate-800/80 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-xs text-slate-400">
-            <Globe className="w-3.5 h-3.5 text-sky-400" />
-            <span className="font-mono text-sky-400">{UNIFIED_ADMIN_HOST}</span>
+      {/* Executive Welcome & Scope Switcher Box */}
+      <div className="bg-theme-card border border-slate-200 border-r-4 border-r-indigo-600 shadow-sm rounded-2xl p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div className="space-y-2.5">
+          <div className="flex items-center gap-2 text-xs text-slate-600">
+            <Globe className="w-4 h-4 text-indigo-600" />
+            <span className="font-mono font-bold text-indigo-600">{UNIFIED_ADMIN_HOST}</span>
             <span>·</span>
-            <span>
+            <span className="font-semibold text-slate-700">
               {isSuperAdmin
-                ? 'کنسول راهبری سراسری (Super Admin Governance)'
-                : `کنسول مدیریت مقید به مستأجر (${activeTenant?.name || currentUser?.tenantName})`}
+                ? 'کنسول راهبری کل (Super Admin Governance)'
+                : `کنسول مدیریت مستأجر (${activeTenant?.name || currentUser?.tenantName})`}
             </span>
           </div>
 
-          <h1 className="text-xl font-bold text-white">
-            مرکز فرماندهی یکپارچه — خوش آمدید، {currentUser.displayName}
+          <h1 className="text-xl font-bold text-slate-900">
+            پیشخوان یکپارچه مدیریت دسترسی، نقش‌ها و مستأجرین
           </h1>
 
-          <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
+          <p className="text-xs text-slate-600 max-w-3xl leading-relaxed">
             {isSuperAdmin ? (
               <>
-                شما با دسترسی <strong className="text-slate-200 font-mono">SUPER_ADMIN</strong> در درگاه واحد{' '}
-                <code className="font-mono text-sky-300">{UNIFIED_ADMIN_HOST}</code> متصل هستید. در حال حاضر قلمرو{' '}
-                <strong className="text-slate-200">{activeTenant?.name || `Tenant #${targetTid}`}</strong> انتخاب شده است و می‌توانید بین{' '}
-                <strong className="text-slate-200">مدیریت مستأجرین</strong>،{' '}
-                <strong className="text-slate-200">مدیریت کاربران</strong> و{' '}
-                <strong className="text-slate-200">تنظیمات پرمیژن‌های سراسری</strong> جابجا شوید.
+                شما با نقش <strong className="font-mono text-slate-900">SUPER_ADMIN</strong> وارد شده‌اید. در حال حاضر قلمرو{' '}
+                <strong className="text-indigo-700">{activeTenant?.name || `Tenant #${targetTid}`}</strong> انتخاب شده است و می‌توانید استحقاق پرمیژن‌های این مستأجر، نقش‌ها و دسترسی‌های مستقیم کاربران را مدیریت کنید.
               </>
             ) : (
               <>
-                شما با دسترسی <strong className="text-slate-200 font-mono">TENANT_ADMIN</strong> از طریق درگاه واحد{' '}
-                <code className="font-mono text-sky-300">{UNIFIED_ADMIN_HOST}</code> به قلمرو اختصاصی{' '}
-                <strong className="text-slate-200">{activeTenant?.name || currentUser.tenantName} (شناسه {currentUser.tenantId})</strong> متصل هستید.
+                شما با نقش <strong className="font-mono text-slate-900">TENANT_ADMIN</strong> در قلمرو اختصاصی{' '}
+                <strong className="text-indigo-700">{activeTenant?.name || currentUser?.tenantName} (#{currentUser?.tenantId})</strong> قرار دارید و می‌توانید نقش‌ها و دسترسی کاربران زیرمجموعه خود را در چارچوب پرمیژن‌های مجاز مستأجر مدیریت نمایید.
               </>
             )}
           </p>
+
+          {/* Quick Tenant Scope Switcher Boxes for Super Admin */}
+          {isSuperAdmin && tenants.length > 0 && (
+            <div className="pt-2 flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold text-slate-700">قلمرو مستأجر فعال:</span>
+              {tenants.map((t) => {
+                const isSelected = Number(t.id) === targetTid;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => onTenantSwitch && onTenantSwitch(String(t.id))}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer whitespace-nowrap shadow-sm ${
+                      isSelected
+                        ? 'bg-indigo-600 border-indigo-700 text-white'
+                        : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-300'
+                    }`}
+                  >
+                    <span>{t.name}</span>
+                    <span className={`font-mono mr-1.5 ${isSelected ? 'text-amber-100' : 'text-slate-500'}`}>
+                      (#{t.id})
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           <button
-            onClick={() => onSelectTab('tenants')}
-            className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-4 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap"
-          >
-            مدیریت مستأجرین
-          </button>
-          <button
+            type="button"
             onClick={() => onSelectTab('users')}
-            className="bg-sky-600 hover:bg-sky-500 text-white px-4 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-sm transition-colors cursor-pointer whitespace-nowrap"
           >
             مدیریت کاربران و مجوزها
           </button>
           <button
-            onClick={() => onSelectTab('permissions')}
-            className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-4 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap"
+            type="button"
+            onClick={() => onSelectTab('roles')}
+            className="bg-teal-700 hover:bg-teal-800 text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-sm transition-colors cursor-pointer whitespace-nowrap"
           >
-            تنظیمات پرمیژن‌های سراسری
+            ماتریس نقش‌ها و گروه‌ها
+          </button>
+          <button
+            type="button"
+            onClick={() => onSelectTab('permissions')}
+            className="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 px-4 py-2.5 rounded-xl text-xs font-semibold shadow-sm transition-colors cursor-pointer whitespace-nowrap"
+          >
+            استحقاق پرمیژن‌ها
           </button>
         </div>
       </div>
 
-      {/* 4-Column Tabular KPI Strip */}
+      {/* 4-Column Multi-Hue Architectural KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-[#111827] border border-slate-800/80 p-5 rounded-xl">
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
-            <span>کاربران قلمرو انتخابی</span>
-            <Users className="w-4 h-4 text-sky-400" />
+        {/* Card 1: Terracotta Copper */}
+        <div
+          onClick={() => onSelectTab('users')}
+          className="bg-theme-card border border-slate-200 border-r-4 border-r-indigo-600 shadow-sm p-5 rounded-2xl hover:border-indigo-500 transition-all cursor-pointer"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold text-slate-700">کاربران قلمرو #{targetTid}</span>
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600">
+              <Users className="w-4 h-4" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-white font-mono tabular-nums">
+          <div className="text-3xl font-bold text-slate-900 font-mono tabular-nums">
             {scopedUsers.length}
           </div>
-          <div className="text-[11px] text-slate-400 mt-1.5">
-            <span>{scopedUsers.filter((u) => u.enabled !== false).length} فعال</span>
-            <span className="mx-1.5 text-slate-600">·</span>
-            <span>Tenant #{targetTid}</span>
+          <div className="text-xs text-slate-500 mt-3 pt-2.5 border-t border-slate-200/70 flex items-center justify-between">
+            <span>{scopedUsers.filter((u) => u.enabled !== false).length} حساب فعال</span>
+            <span className="text-indigo-600 font-bold">مدیریت کاربران ←</span>
           </div>
         </div>
 
-        <div className="bg-[#111827] border border-slate-800/80 p-5 rounded-xl">
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
-            <span>پرمیژن‌های دارای استحقاق مستأجر</span>
-            <Key className="w-4 h-4 text-amber-400" />
+        {/* Card 2: Antique Gold / Ochre */}
+        <div
+          onClick={() => onSelectTab('permissions')}
+          className="bg-theme-card border border-slate-200 border-r-4 border-r-amber-600 shadow-sm p-5 rounded-2xl hover:border-amber-500 transition-all cursor-pointer"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold text-slate-700">استحقاق پرمیژن مستأجر</span>
+            <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700">
+              <Key className="w-4 h-4" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-white font-mono tabular-nums">
-            {entitledPermsCount} <span className="text-sm text-slate-500 font-normal">/ {totalCatalogPerms || 14}</span>
+          <div className="text-3xl font-bold text-slate-900 font-mono tabular-nums">
+            {entitledPermsCount}{' '}
+            <span className="text-base text-slate-400 font-normal">/ {totalCatalogPerms || 14}</span>
           </div>
-          <div className="text-[11px] text-slate-400 mt-1.5">
-            {isSuperAdmin ? 'قابل ویرایش توسط سوپرادمین' : 'تعیین‌شده توسط راهبر کل'}
+          <div className="text-xs text-slate-500 mt-3 pt-2.5 border-t border-slate-200/70 flex items-center justify-between">
+            <span>در {permissionGroups.length} گروه دسترسی</span>
+            <span className="text-amber-700 font-bold">تنظیم استحقاق ←</span>
           </div>
         </div>
 
-        <div className="bg-[#111827] border border-slate-800/80 p-5 rounded-xl">
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
-            <span>نقش‌های تعریف‌شده</span>
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+        {/* Card 3: Persian Turquoise / Teal */}
+        <div
+          onClick={() => onSelectTab('roles')}
+          className="bg-theme-card border border-slate-200 border-r-4 border-r-teal-700 shadow-sm p-5 rounded-2xl hover:border-teal-600 transition-all cursor-pointer"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold text-slate-700">نقش‌های تعریف‌شده</span>
+            <div className="w-9 h-9 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700">
+              <ShieldCheck className="w-4 h-4" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-white font-mono tabular-nums">
+          <div className="text-3xl font-bold text-slate-900 font-mono tabular-nums">
             {scopedRoles.length}
           </div>
-          <div className="text-[11px] text-slate-400 mt-1.5">
-            مجهز به گارد استحقاق (Entitlement Guard)
+          <div className="text-xs text-slate-500 mt-3 pt-2.5 border-t border-slate-200/70 flex items-center justify-between">
+            <span>مجهز به گارد استحقاق</span>
+            <span className="text-teal-700 font-bold">ماتریس نقش‌ها ←</span>
           </div>
         </div>
 
-        <div className="bg-[#111827] border border-slate-800/80 p-5 rounded-xl">
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
-            <span>مستأجرین متصل به {UNIFIED_ADMIN_HOST}</span>
-            <Building2 className="w-4 h-4 text-sky-400" />
+        {/* Card 4: Royal Pomegranate / Crimson */}
+        <div
+          onClick={() => onSelectTab('tenants')}
+          className="bg-theme-card border border-slate-200 border-r-4 border-r-rose-700 shadow-sm p-5 rounded-2xl hover:border-rose-600 transition-all cursor-pointer"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold text-slate-700">مستأجرین متصل</span>
+            <div className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-700">
+              <Building2 className="w-4 h-4" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-white font-mono tabular-nums">
+          <div className="text-3xl font-bold text-slate-900 font-mono tabular-nums">
             {tenants.length}
           </div>
-          <div className="text-[11px] text-slate-400 mt-1.5">
-            {currentUser.isImpersonated ? 'وضعیت: جعل هویت فعال (RFC 8693)' : 'وضعیت نشست: ادمین اصلی'}
+          <div className="text-xs text-slate-500 mt-3 pt-2.5 border-t border-slate-200/70 flex items-center justify-between">
+            <span>پشتیبانی از کلونینگ</span>
+            <span className="text-rose-700 font-bold">مدیریت مستأجرین ←</span>
           </div>
         </div>
       </div>
 
-      {/* 3-Pillar Centralized Workspace Launchpad */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-stretch">
-        {/* Pillar 1: Tenant Management */}
-        <div className="bg-[#111827] border border-slate-800/80 p-5 rounded-2xl flex flex-col justify-between space-y-4">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
-                  <Building2 className="w-4 h-4" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-bold text-white">مدیریت مستأجرین (Tenants)</h2>
-                  <p className="text-[11px] text-slate-400 font-mono">GET/POST /api/admin/tenants</p>
-                </div>
-              </div>
-              <span className="text-xs font-mono text-sky-400 tabular-nums">{tenants.length} سازمان</span>
-            </div>
-
-            <p className="text-xs text-slate-400 leading-relaxed">
-              ایجاد مستأجر جدید، فعال‌سازی ماژول‌های اختصاصی و کلون کردن کامل پیکربندی یک مستأجر به همراه نقش‌ها و استحقاق‌ها.
+      {/* Boxed Permission Group Entitlement Matrix Cards */}
+      <div className="bg-theme-card border border-slate-200 shadow-sm rounded-2xl p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-4">
+          <div>
+            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <Layers className="w-4 h-4 text-indigo-600" />
+              <span>باکس‌های استحقاق ماژول‌ها و گروه‌های پرمیژن در قلمرو «{activeTenant?.name || `Tenant #${targetTid}`}»</span>
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              نمایش سقف مجوزهای اعطاشده توسط Super Admin به این مستأجر در هر گروه عملیاتی
             </p>
-
-            <div className="space-y-1.5 pt-1">
-              {tenants.slice(0, 3).map((t) => {
-                const isSelected = Number(t.id) === targetTid;
-                return (
-                  <div
-                    key={t.id}
-                    className={`px-3 py-2 rounded-lg border text-xs flex items-center justify-between ${
-                      isSelected
-                        ? 'bg-sky-950/30 border-sky-500/40 text-slate-100'
-                        : 'bg-[#0b0f17] border-slate-800/80 text-slate-300'
-                    }`}
-                  >
-                    <div className="truncate">
-                      <span className="font-semibold">{t.name}</span>
-                      <span className="text-[11px] text-slate-500 font-mono mr-1.5">({t.code})</span>
-                    </div>
-                    {isSuperAdmin && !isSelected && onTenantSwitch ? (
-                      <button
-                        type="button"
-                        onClick={() => onTenantSwitch(String(t.id))}
-                        className="text-[11px] text-sky-400 hover:text-sky-300 font-semibold cursor-pointer"
-                      >
-                        انتخاب قلمرو
-                      </button>
-                    ) : (
-                      <span className="text-[11px] font-mono text-emerald-400">قلمرو فعال</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
           </div>
-
           <button
             type="button"
-            onClick={() => onSelectTab('tenants')}
-            className="w-full py-2.5 px-4 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer"
+            onClick={() => onSelectTab('permissions')}
+            className="px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
           >
-            <span>ورود به بخش مدیریت مستأجرین</span>
-            <ArrowLeft className="w-3.5 h-3.5 text-sky-400" />
-          </button>
-        </div>
-
-        {/* Pillar 2: User Management */}
-        <div className="bg-[#111827] border border-slate-800/80 p-5 rounded-2xl flex flex-col justify-between space-y-4">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                  <Users className="w-4 h-4" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-bold text-white">مدیریت کاربران (Users)</h2>
-                  <p className="text-[11px] text-slate-400 font-mono">PUT /api/admin/users/:id/roles</p>
-                </div>
-              </div>
-              <span className="text-xs font-mono text-emerald-400 tabular-nums">{scopedUsers.length} کاربر</span>
-            </div>
-
-            <p className="text-xs text-slate-400 leading-relaxed">
-              تعریف کاربر جدید، تخصیص چندگانه نقش‌ها، اعطای پرمیژن‌های مستقیم به هر کاربر، مشاهده لاگ فعالیت و جعل هویت RFC 8693.
-            </p>
-
-            <div className="space-y-1.5 pt-1">
-              {scopedUsers.slice(0, 3).map((u) => (
-                <div
-                  key={u.id}
-                  className="px-3 py-2 rounded-lg bg-[#0b0f17] border border-slate-800/80 text-xs flex items-center justify-between"
-                >
-                  <div className="truncate">
-                    <span className="font-semibold text-slate-200">{u.firstName} {u.lastName}</span>
-                    <span className="text-[11px] text-sky-400 font-mono mr-1.5">@{u.username}</span>
-                  </div>
-                  <span className="text-[11px] font-mono text-slate-400 tabular-nums">
-                    {(u.effectivePermissions || []).length} مجوز
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => onSelectTab('users')}
-            className="w-full py-2.5 px-4 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer"
-          >
-            <span>ورود به مدیریت کاربران و دسترسی فردی</span>
+            <span>مدیریت استحقاق‌ها و کاتالوگ پرمیژن</span>
             <ArrowLeft className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        {/* Pillar 3: System-Wide Permission Settings */}
-        <div className="bg-[#111827] border border-slate-800/80 p-5 rounded-2xl flex flex-col justify-between space-y-4">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                  <Key className="w-4 h-4" />
-                </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          {permissionGroups.map((grp) => {
+            const total = (grp.permissions || []).length;
+            const entitled = (grp.permissions || []).filter((p) => p.entitled !== false).length;
+            const allEntitled = total > 0 && entitled === total;
+            const pct = total > 0 ? Math.round((entitled / total) * 100) : 0;
+
+            return (
+              <div
+                key={grp.id}
+                onClick={() => onSelectTab('permissions')}
+                className="p-4 rounded-xl border border-slate-200 bg-slate-50/90 hover:bg-theme-card hover:border-indigo-500 hover:shadow-sm transition-all cursor-pointer flex flex-col justify-between gap-3"
+              >
                 <div>
-                  <h2 className="text-sm font-bold text-white">تنظیمات پرمیژن‌های سراسری</h2>
-                  <p className="text-[11px] text-slate-400 font-mono">POST /api/admin/tenants/:id/permissions</p>
-                </div>
-              </div>
-              <span className="text-xs font-mono text-amber-400 tabular-nums">
-                {entitledPermsCount}/{totalCatalogPerms || 14}
-              </span>
-            </div>
-
-            <p className="text-xs text-slate-400 leading-relaxed">
-              مدیریت کاتالوگ پرمیژن‌های سراسری، اعطا یا سلب استحقاق تکی و گروهی از مستأجرین با سلب خودکار آبشاری از نقش‌ها.
-            </p>
-
-            <div className="space-y-1.5 pt-1">
-              {permissionGroups.slice(0, 3).map((g) => {
-                const total = (g.permissions || []).length;
-                const entitled = (g.permissions || []).filter((p) => p.entitled !== false).length;
-                return (
-                  <div
-                    key={g.id}
-                    className="px-3 py-2 rounded-lg bg-[#0b0f17] border border-slate-800/80 text-xs flex items-center justify-between"
-                  >
-                    <div className="truncate">
-                      <span className="font-semibold text-slate-200">{g.name}</span>
-                      <span className="text-[11px] text-slate-500 font-mono mr-1.5">({g.code})</span>
-                    </div>
-                    <span className="text-[11px] font-mono text-amber-400 tabular-nums">
-                      {entitled}/{total} فعال
+                  <div className="flex items-center justify-between text-xs mb-1.5">
+                    <span className="font-mono font-bold text-indigo-600">{grp.code}</span>
+                    <span
+                      className={`font-mono font-bold tabular-nums ${
+                        allEntitled
+                          ? 'text-teal-700'
+                          : entitled > 0
+                          ? 'text-amber-700'
+                          : 'text-rose-700'
+                      }`}
+                    >
+                      {entitled}/{total}
                     </span>
                   </div>
-                );
-              })}
-            </div>
-          </div>
+                  <div className="text-xs font-bold text-slate-900 leading-snug">{grp.name}</div>
+                </div>
 
-          <button
-            type="button"
-            onClick={() => onSelectTab('permissions')}
-            className="w-full py-2.5 px-4 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer"
-          >
-            <span>ورود به تنظیمات پرمیژن‌های سراسری</span>
-            <ArrowLeft className="w-3.5 h-3.5 text-amber-400" />
-          </button>
+                <div className="space-y-2">
+                  {/* Progress Bar */}
+                  <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${
+                        allEntitled
+                          ? 'bg-teal-600'
+                          : entitled > 0
+                          ? 'bg-amber-600'
+                          : 'bg-rose-600'
+                      }`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <div className="text-[11px] text-slate-600 flex items-center justify-between">
+                    <span>{allEntitled ? 'استحقاق کامل' : entitled > 0 ? 'استحقاق جزئی' : 'سلب شده'}</span>
+                    <span className="text-indigo-600 font-bold">مشاهده ←</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* Two-Column Split: Governance Matrix & Scoped Users Quick Inspector */}
+      {/* Two-Column Live Data Tables: Roles Table Box & Users Table Box */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        {/* Right Column: Governance Capabilities & Rules */}
-        <div className="lg:col-span-6 bg-[#111827] border border-slate-800/80 p-6 rounded-2xl flex flex-col justify-between space-y-5">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
-              <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                <Lock className="w-4 h-4 text-sky-400" />
-                <span>معماری کنترل دسترسی در {UNIFIED_ADMIN_HOST}</span>
-              </h2>
-              <span className="text-xs font-mono text-slate-400">BFF + Auth Server</span>
-            </div>
-
-            <div className="space-y-4 text-xs text-slate-300 leading-relaxed">
-              <div className="pb-3.5 border-b border-slate-800/60">
-                <div className="font-bold text-slate-100 mb-1 flex items-center justify-between">
-                  <span>۱. مدیریت پرمیژن‌های مستأجر توسط Super Admin</span>
-                  <span className="font-mono text-[11px] text-sky-400">POST/DELETE /api/admin/tenants/:id/permissions</span>
-                </div>
-                <p className="text-slate-400">
-                  سوپرادمین تعیین می‌کند هر مستأجر (مثلاً <code className="font-mono text-slate-300">smslocal</code> یا <code className="font-mono text-slate-300">asanlocal</code>) به کدام ماژول‌ها و پرمیژن‌ها استحقاق دارد. به محض سلب یک پرمیژن از مستأجر، آن مجوز به صورت خودکار از نقش‌ها و کاربران آن مستأجر نیز سلب می‌شود.
-                </p>
-              </div>
-
-              <div className="pb-3.5 border-b border-slate-800/60">
-                <div className="font-bold text-slate-100 mb-1 flex items-center justify-between">
-                  <span>۲. مدیریت مجوزها و نقش‌های کاربران توسط Tenant Admin</span>
-                  <span className="font-mono text-[11px] text-emerald-400">PUT /api/admin/users/:id/roles</span>
-                </div>
-                <p className="text-slate-400">
-                  ادمین هر مستأجر می‌تواند برای کاربران زیرمجموعه خود نقش‌های سفارشی تعریف کند یا پرمیژن‌های مستقیم (Direct Permissions) در چارچوب پرمیژن‌های مجاز مستأجر اختصاص دهد.
-                </p>
-              </div>
-
-              <div>
-                <div className="font-bold text-slate-100 mb-1 flex items-center justify-between">
-                  <span>۳. جعل هویت استاندارد RFC 8693 با ثبت Actor</span>
-                  <span className="font-mono text-[11px] text-amber-400">POST /api/admin/impersonate</span>
-                </div>
-                <p className="text-slate-400">
-                  ادمین مستأجر صرفاً مجاز به جعل هویت کاربران داخل مستأجر خود است و تلاش برای دسترسی به کاربران مستأجر دیگر با خطای <code className="font-mono text-rose-300">403 Forbidden</code> در گارد مرزی مسدود و در ممیزی ثبت می‌شود.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs">
-            <span className="text-slate-400">مشاهده کاتالوگ و تغییر استحقاق‌ها</span>
-            <button
-              onClick={() => onSelectTab('permissions')}
-              className="text-sky-400 hover:text-sky-300 font-semibold flex items-center gap-1 cursor-pointer"
-            >
-              <span>باز کردن ماتریس پرمیژن‌ها</span>
-              <ArrowLeft className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Left Column: Active Scoped Users & Effective Permission Count */}
-        <div className="lg:col-span-6 bg-[#111827] border border-slate-800/80 p-6 rounded-2xl flex flex-col justify-between space-y-4">
+        {/* Roles Summary Table Box */}
+        <div className="lg:col-span-6 bg-theme-card border border-slate-200 shadow-sm rounded-2xl overflow-hidden flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between border-b border-slate-800/80 pb-3 mb-4">
-              <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                <Users className="w-4 h-4 text-sky-400" />
-                <span>کاربران و مجوزهای مؤثر در قلمرو #{targetTid}</span>
-              </h2>
+            <div className="px-5 py-4 bg-slate-100/90 border-b border-slate-200 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-teal-700" />
+                  <span>جدول نقش‌ها و مجوزهای متصل (Roles Matrix)</span>
+                </h2>
+                <p className="text-[11px] text-slate-600 mt-0.5">
+                  نقش‌های فعال در مستأجر #{targetTid} و تعداد پرمیژن‌های تخصیص‌یافته
+                </p>
+              </div>
               <button
-                onClick={() => onSelectTab('users')}
-                className="text-xs text-sky-400 hover:text-sky-300 font-semibold cursor-pointer"
+                type="button"
+                onClick={() => onSelectTab('roles')}
+                className="px-3 py-1.5 rounded-lg bg-theme-card border border-slate-300 hover:bg-slate-50 text-xs font-semibold text-indigo-600 flex items-center gap-1 cursor-pointer shadow-sm"
               >
-                مدیریت کامل کاربران
+                <span>مدیریت نقش‌ها</span>
+                <ArrowLeft className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            <div className="divide-y divide-slate-800/70">
-              {scopedUsers.slice(0, 5).map((u) => (
-                <div key={u.id} className="py-3 flex items-center justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="text-xs font-bold text-slate-100 truncate">
-                      {u.firstName} {u.lastName}
-                    </div>
-                    <div className="text-[11px] text-slate-400 font-mono mt-0.5 flex items-center gap-1.5">
-                      <span className="text-sky-400">@{u.username}</span>
-                      <span>·</span>
-                      <span>{u.phone}</span>
-                      <span>·</span>
-                      <span>Tenant #{u.tenantId}</span>
-                    </div>
-                  </div>
-
-                  <div className="text-left shrink-0">
-                    <div className="text-xs font-mono text-slate-200 tabular-nums">
-                      {(u.effectivePermissions || []).length} مجوز مؤثر
-                    </div>
-                    <div className="text-[11px] text-slate-400 font-mono">
-                      {u.roles.join(' · ')}
-                    </div>
-                  </div>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full text-right text-xs">
+                <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+                  <tr>
+                    <th className="py-3.5 px-4">عنوان و کد نقش</th>
+                    <th className="py-3.5 px-4">گروه‌های متصل</th>
+                    <th className="py-3.5 px-4 text-center">تعداد پرمیژن</th>
+                    <th className="py-3.5 px-4 text-left">عملیات</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {scopedRoles.map((r) => (
+                    <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3.5 px-4">
+                        <div className="font-bold text-slate-900">{r.name}</div>
+                        <div className="font-mono text-[11px] text-indigo-600 font-semibold mt-0.5">
+                          {r.code} {r.isDefault && '· پیش‌فرض'}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-[11px] text-slate-600">
+                        {(r.groupCodes || []).length > 0
+                          ? r.groupCodes.join(' · ')
+                          : 'انتخاب موردی'}
+                      </td>
+                      <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-900 tabular-nums">
+                        {(r.permissions || []).length} مجوز
+                      </td>
+                      <td className="py-3.5 px-4 text-left">
+                        <button
+                          type="button"
+                          onClick={() => onSelectTab('roles')}
+                          className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-semibold cursor-pointer"
+                        >
+                          ویرایش ماتریس
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
+        </div>
 
-          <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-            <span>امکان ویرایش نقش‌ها و پرمیژن‌های مستقیم هر کاربر</span>
-            <button
-              onClick={() => onSelectTab('users')}
-              className="text-sky-400 hover:text-sky-300 font-semibold flex items-center gap-1 cursor-pointer"
-            >
-              <span>ویرایش دسترسی کاربران</span>
-              <ArrowLeft className="w-3.5 h-3.5" />
-            </button>
+        {/* Users Summary Table Box */}
+        <div className="lg:col-span-6 bg-theme-card border border-slate-200 shadow-sm rounded-2xl overflow-hidden flex flex-col justify-between">
+          <div>
+            <div className="px-5 py-4 bg-slate-100/90 border-b border-slate-200 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <Users className="w-4 h-4 text-indigo-600" />
+                  <span>جدول کاربران و دسترسی‌های مؤثر در قلمرو #{targetTid}</span>
+                </h2>
+                <p className="text-[11px] text-slate-600 mt-0.5">
+                  خلاصه وضعیت کاربران، نقش‌ها و مجموع مجوزهای مؤثر هر کاربر
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => onSelectTab('users')}
+                className="px-3 py-1.5 rounded-lg bg-theme-card border border-slate-300 hover:bg-slate-50 text-xs font-semibold text-indigo-600 flex items-center gap-1 cursor-pointer shadow-sm"
+              >
+                <span>مدیریت کاربران</span>
+                <ArrowLeft className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-right text-xs">
+                <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+                  <tr>
+                    <th className="py-3.5 px-4">کاربر</th>
+                    <th className="py-3.5 px-4">نقش‌ها</th>
+                    <th className="py-3.5 px-4 text-center">مجوزهای مؤثر</th>
+                    <th className="py-3.5 px-4 text-center">وضعیت</th>
+                    <th className="py-3.5 px-4 text-left">دسترسی</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {scopedUsers.slice(0, 6).map((u) => (
+                    <tr key={u.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3.5 px-4">
+                        <div className="font-bold text-slate-900">
+                          {u.firstName} {u.lastName}
+                        </div>
+                        <div className="font-mono text-[11px] text-indigo-600 font-semibold mt-0.5">
+                          @{u.username}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-[11px] text-slate-700 font-medium">
+                        {(u.roles || []).join(' · ')}
+                      </td>
+                      <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-900 tabular-nums">
+                        {(u.effectivePermissions || []).length} مجوز
+                      </td>
+                      <td className="py-3.5 px-4 text-center">
+                        {u.enabled !== false ? (
+                          <span className="inline-flex items-center gap-1 text-teal-700 font-semibold">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
+                            <span>فعال</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-rose-700 font-semibold">
+                            <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                            <span>مسدود</span>
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 text-left">
+                        <button
+                          type="button"
+                          onClick={() => onSelectTab('users')}
+                          className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-semibold inline-flex items-center gap-1 cursor-pointer"
+                        >
+                          <SlidersHorizontal className="w-3 h-3" />
+                          <span>مجوزها</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>

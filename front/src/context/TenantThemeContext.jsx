@@ -1,12 +1,16 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { UNIFIED_ADMIN_HOST } from '../api/iamService';
+import { THEME_PALETTES, getSavedPalette, applyThemePalette } from '../theme/palettes';
 
 const TenantThemeContext = createContext({
   hostAddress: UNIFIED_ADMIN_HOST,
   tenantCode: 'default',
   tenantName: 'درگاه یکپارچه مدیریت آسان',
   logoUrl: '/tenants/default/logo.svg',
-  themeCssUrl: '/tenants/default/theme.css'
+  themeCssUrl: '/tenants/default/theme.css',
+  paletteId: 'terracotta',
+  palettes: THEME_PALETTES,
+  setPaletteId: () => {}
 });
 
 const KNOWN_TENANTS = new Set(['default', 'smslocal', 'smslocal_ir', 'asanlocal', 'asanlocal_ir']);
@@ -35,14 +39,31 @@ function resolveTenant(currentUser) {
 
 export function TenantThemeProvider({ currentUser, children }) {
   const [tenantInfo, setTenantInfo] = useState(() => resolveTenant(currentUser));
+  const [paletteId, setPaletteIdState] = useState(() => getSavedPalette());
 
   useEffect(() => {
     const resolved = resolveTenant(currentUser);
     setTenantInfo(resolved);
   }, [currentUser]);
 
+  useEffect(() => {
+    applyThemePalette(paletteId);
+  }, [paletteId]);
+
+  const setPaletteId = (nextId) => {
+    const applied = applyThemePalette(nextId);
+    setPaletteIdState(applied);
+  };
+
   return (
-    <TenantThemeContext.Provider value={tenantInfo}>
+    <TenantThemeContext.Provider
+      value={{
+        ...tenantInfo,
+        paletteId,
+        palettes: THEME_PALETTES,
+        setPaletteId
+      }}
+    >
       {children}
     </TenantThemeContext.Provider>
   );

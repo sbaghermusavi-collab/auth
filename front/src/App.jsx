@@ -19,6 +19,7 @@ export default function App() {
   const [modules, setModules] = useState([]);
   const [activeTenantId, setActiveTenantId] = useState(() => getStoredActiveTenant() || '10');
   const [users, setUsers] = useState([]);
+  const [userGroups, setUserGroups] = useState([]);
   const [roles, setRoles] = useState([]);
   const [permissionGroups, setPermissionGroups] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
@@ -38,6 +39,7 @@ export default function App() {
         tenantsList,
         modulesList,
         usersData,
+        groupsData,
         rolesData,
         permsData,
         logsData,
@@ -46,6 +48,7 @@ export default function App() {
         iamApi.getTenants().catch(() => []),
         iamApi.getModules().catch(() => []),
         iamApi.getUsers(resolvedTid).catch(() => []),
+        iamApi.getUserGroups(resolvedTid).catch(() => []),
         iamApi.getRoles(resolvedTid).catch(() => []),
         iamApi.getPermissions(resolvedTid).catch(() => []),
         iamApi.getAuditLogs(currentUser?.role === 'SUPER_ADMIN' ? null : resolvedTid).catch(() => []),
@@ -55,6 +58,7 @@ export default function App() {
       setTenants(tenantsList);
       setModules(modulesList);
       setUsers(usersData);
+      setUserGroups(groupsData);
       setRoles(rolesData);
       setPermissionGroups(permsData);
       setAuditLogs(logsData);
@@ -118,6 +122,19 @@ export default function App() {
     }
   };
 
+  const handleImpersonateTenant = async (tenantId) => {
+    try {
+      const updatedUser = await iamApi.impersonateTenant(tenantId);
+      setCurrentUser(updatedUser);
+      setActiveTenantId(String(tenantId));
+      setStoredActiveTenant(String(tenantId));
+      await loadBackendData(tenantId);
+      showToast(`ورود با هویت ادمین مستأجر #${tenantId} (@${updatedUser.targetUsername}) فعال شد.`);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
   const handleRevert = async () => {
     try {
       const reverted = await iamApi.revertImpersonation();
@@ -160,6 +177,37 @@ export default function App() {
     }
   };
 
+  const handleDeleteUser = async (userId, username) => {
+    try {
+      await iamApi.deleteUser(userId);
+      await loadBackendData(activeTenantId);
+      showToast(`کاربر @${username} حذف شد.`);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
+  // --- Hierarchical User Groups (/api/groups) ---
+  const handleCreateUserGroup = async (payload) => {
+    try {
+      await iamApi.createUserGroup(payload);
+      await loadBackendData(activeTenantId);
+      showToast(`گروه کاربری «${payload.name}» ایجاد شد.`);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
+  const handleAssignPermissionToUserGroup = async (groupId, payload) => {
+    try {
+      await iamApi.assignPermissionToUserGroup(groupId, payload);
+      await loadBackendData(activeTenantId);
+      showToast(`مجوزهای گروه کاربری #${groupId} بروزرسانی شد.`);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
   // --- Role & Group Handlers ---
   const handleCreateRole = async (newRoleData) => {
     try {
@@ -176,6 +224,26 @@ export default function App() {
       await iamApi.updateRole(roleId, roleData);
       await loadBackendData(activeTenantId);
       showToast(`پرمیژن‌های نقش ${roleData.code} بروزرسانی شد.`);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
+  const handleDeleteRole = async (roleId, roleCode) => {
+    try {
+      await iamApi.deleteRole(roleId);
+      await loadBackendData(activeTenantId);
+      showToast(`نقش ${roleCode} حذف شد.`);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
+  const handleSetTenantDefaultRole = async (tenantId, roleId) => {
+    try {
+      await iamApi.setTenantDefaultRole(tenantId, roleId);
+      await loadBackendData(activeTenantId);
+      showToast(`نقش پیش‌فرض مستأجر #${tenantId} بروزرسانی شد.`);
     } catch (err) {
       showToast(err.message, 'error');
     }
@@ -205,7 +273,7 @@ export default function App() {
     }
   };
 
-  // --- Super Admin Tenant Entitlement Handlers ---
+  // --- Super Admin Tenant Entitlement & Catalog Handlers ---
   const handleGrantPermission = async (tenantId, permId, permCode) => {
     try {
       await iamApi.grantPermissionToTenant(tenantId, permId);
@@ -256,6 +324,36 @@ export default function App() {
     }
   };
 
+  const handleDeletePermission = async (permId, permCode) => {
+    try {
+      await iamApi.deletePermission(permId);
+      await loadBackendData(activeTenantId);
+      showToast(`پرمیژن ${permCode} از کاتالوگ حذف شد.`);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
+  const handleCreatePermissionGroup = async (payload) => {
+    try {
+      await iamApi.createPermissionGroup(payload);
+      await loadBackendData(activeTenantId);
+      showToast(`گروه پرمیژن ${payload.code} ایجاد شد.`);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
+  const handleDeletePermissionGroup = async (groupId) => {
+    try {
+      await iamApi.deletePermissionGroup(groupId);
+      await loadBackendData(activeTenantId);
+      showToast('گروه پرمیژن حذف شد.');
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
   // --- Tenant Lifecycle & Cloning Handlers ---
   const handleCreateTenant = async (payload) => {
     try {
@@ -274,6 +372,19 @@ export default function App() {
       await iamApi.updateTenant(tenantId, payload);
       await loadBackendData(activeTenantId);
       showToast('پیکربندی و ماژول‌های مستأجر بروزرسانی شد.');
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
+  const handleDeleteTenant = async (tenantId, tenantName) => {
+    try {
+      await iamApi.deleteTenant(tenantId);
+      const fallbackTid = '10';
+      setActiveTenantId(fallbackTid);
+      setStoredActiveTenant(fallbackTid);
+      await loadBackendData(fallbackTid);
+      showToast(`مستأجر «${tenantName}» حذف گردید.`);
     } catch (err) {
       showToast(err.message, 'error');
     }
@@ -301,6 +412,16 @@ export default function App() {
     }
   };
 
+  const handleRevokeAllOtherSessions = async () => {
+    try {
+      const res = await iamApi.revokeAllOtherSessions();
+      await loadBackendData(activeTenantId);
+      showToast(`سایر نشست‌های فعال (${res.revokedCount || 0} نشست) باطل شدند.`);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
   if (!isAuthenticated || !currentUser) {
     return (
       <TenantThemeProvider currentUser={currentUser}>
@@ -323,6 +444,7 @@ export default function App() {
         activeTenantId={activeTenantId}
         activeTenantObj={activeTenantObj}
         users={users}
+        userGroups={userGroups}
         roles={roles}
         permissionGroups={permissionGroups}
         auditLogs={auditLogs}
@@ -332,23 +454,34 @@ export default function App() {
         onOpenClaimsModal={() => setIsClaimsModalOpen(true)}
         onLogout={handleLogout}
         onImpersonate={handleImpersonate}
+        onImpersonateTenant={handleImpersonateTenant}
         onRevert={handleRevert}
         onUpdateUserStatus={handleUpdateUserStatus}
         onUpdateUserAccess={handleUpdateUserAccess}
         onCreateUser={handleCreateUser}
+        onDeleteUser={handleDeleteUser}
+        onCreateUserGroup={handleCreateUserGroup}
+        onAssignPermissionToUserGroup={handleAssignPermissionToUserGroup}
         onCreateRole={handleCreateRole}
         onUpdateRole={handleUpdateRole}
+        onDeleteRole={handleDeleteRole}
         onAttachGroupToRole={handleAttachGroupToRole}
         onDetachGroupFromRole={handleDetachGroupFromRole}
+        onSetTenantDefaultRole={handleSetTenantDefaultRole}
         onGrantPermission={handleGrantPermission}
         onRevokePermission={handleRevokePermission}
         onGrantGroup={handleGrantGroup}
         onRevokeGroup={handleRevokeGroup}
         onCreatePermission={handleCreatePermission}
+        onDeletePermission={handleDeletePermission}
+        onCreatePermissionGroup={handleCreatePermissionGroup}
+        onDeletePermissionGroup={handleDeletePermissionGroup}
         onCreateTenant={handleCreateTenant}
         onUpdateTenant={handleUpdateTenant}
+        onDeleteTenant={handleDeleteTenant}
         onCloneTenant={handleCloneTenant}
         onRevokeSession={handleRevokeSession}
+        onRevokeAllOtherSessions={handleRevokeAllOtherSessions}
       />
 
       {isClaimsModalOpen && (

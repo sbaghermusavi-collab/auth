@@ -9,18 +9,23 @@ import {
   X,
   FileCheck,
   Link2,
-  Unlink
+  Unlink,
+  Trash2,
+  Star
 } from 'lucide-react';
 
 export default function RolesPage({
   roles = [],
+  tenants = [],
   permissionGroups = [],
   activeTenantId,
   currentUser,
   onCreateRole,
   onUpdateRole,
+  onDeleteRole,
   onAttachGroupToRole,
-  onDetachGroupFromRole
+  onDetachGroupFromRole,
+  onSetTenantDefaultRole
 }) {
   const [isBuilderOpen, setIsBuilderOpen] = useState(false);
   const [selectedRoleId, setSelectedRoleId] = useState(roles[0]?.id || null);
@@ -33,6 +38,7 @@ export default function RolesPage({
 
   const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
   const targetTid = Number(activeTenantId || currentUser?.tenantId || 10);
+  const activeTenant = tenants.find((t) => Number(t.id) === targetTid);
 
   const scopedRoles = roles.filter(
     (r) => r.tenantId === targetTid || (isSuperAdmin && r.tenantId === 1)
@@ -88,66 +94,79 @@ export default function RolesPage({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#111827] p-5 rounded-2xl border border-slate-800/80">
+      <div className="bg-theme-card border border-slate-200 border-r-4 border-r-teal-700 shadow-sm rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-base font-bold text-white flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-sky-400" />
-            <span>مهندسی نقش‌ها و اتصال یک‌کلیکی گروه‌های پرمیژن (Role & Group Matrix)</span>
+          <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5 text-teal-700" />
+            <span>ماتریس مهندسی نقش‌ها و اتصال یک‌کلیکی گروه‌های پرمیژن (Role & Group Matrix)</span>
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            تعریف نقش‌های مقید به مستأجر #{targetTid} با پشتیبانی از اتصال دسته‌ای ماژول‌ها و گارد استحقاق
+          <p className="text-xs text-slate-500 mt-1 font-mono">
+            GET / POST / PUT / DELETE /api/admin/roles · POST / DELETE /api/admin/roles/:roleId/groups/:groupId
           </p>
         </div>
 
         <button
           id="btn-create-role"
+          type="button"
           onClick={() => setIsBuilderOpen(true)}
-          className="bg-sky-600 hover:bg-sky-500 text-white px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer shrink-0 whitespace-nowrap"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer shrink-0 whitespace-nowrap"
         >
           <Plus className="w-4 h-4" />
           <span>تعریف نقش سفارشی جدید</span>
         </button>
       </div>
 
+      {/* Master-Detail Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Roles List Column */}
-        <div className="lg:col-span-4 space-y-2.5">
-          <div className="text-xs font-semibold text-slate-400 px-1">
-            فهرست نقش‌های قلمرو ({scopedRoles.length})
+        <div className="lg:col-span-4 space-y-3">
+          <div className="text-xs font-bold text-slate-700 px-1 flex items-center justify-between">
+            <span>فهرست نقش‌های قلمرو #{targetTid}</span>
+            <span className="font-mono text-indigo-600">{scopedRoles.length} نقش</span>
           </div>
 
-          <div id="roles-list-container" className="space-y-2">
+          <div id="roles-list-container" className="space-y-2.5">
             {scopedRoles.map((r) => {
               const isSelected = selectedRoleDetail?.id === r.id;
+              const isTenantDefault =
+                r.isDefault || (activeTenant && Number(activeTenant.defaultRoleId) === Number(r.id));
+
               return (
                 <div
                   key={r.id}
                   onClick={() => setSelectedRoleId(r.id)}
                   className={`p-4 rounded-xl border transition-colors cursor-pointer ${
                     isSelected
-                      ? 'bg-[#111827] border-sky-500'
-                      : 'bg-[#111827]/60 border-slate-800/80 hover:border-slate-700'
+                      ? 'bg-indigo-50/70 border-indigo-600 border-r-4 shadow-sm'
+                      : 'bg-theme-card border-slate-200 hover:border-slate-300 shadow-sm'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="font-mono text-xs font-bold text-sky-400">{r.code}</span>
-                    <span className="text-[11px] text-slate-400 font-mono">
-                      {r.isSystem ? 'System Role' : `Tenant #${r.tenantId}`}
-                    </span>
+                    <span className="font-mono text-xs font-bold text-indigo-600">{r.code}</span>
+                    <div className="flex items-center gap-1.5 text-[11px] font-mono">
+                      {isTenantDefault && (
+                        <span className="text-amber-600 font-semibold flex items-center gap-0.5">
+                          <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                          <span>پیش‌فرض</span>
+                        </span>
+                      )}
+                      <span className="text-slate-400">·</span>
+                      <span className="text-slate-500">Tenant #{r.tenantId}</span>
+                    </div>
                   </div>
 
-                  <h4 className="text-sm font-bold text-slate-100 mb-1">{r.name}</h4>
-                  <p className="text-xs text-slate-400 line-clamp-2 mb-3 leading-relaxed">
+                  <h4 className="text-sm font-bold text-slate-900 mb-1">{r.name}</h4>
+                  <p className="text-xs text-slate-500 line-clamp-2 mb-3 leading-relaxed">
                     {r.description}
                   </p>
 
-                  <div className="flex items-center justify-between text-[11px] text-slate-400 pt-2.5 border-t border-slate-800/80 font-mono tabular-nums">
-                    <span className="flex items-center gap-1">
-                      <Key className="w-3.5 h-3.5 text-amber-400" />
-                      {(r.permissions || []).length} مجوز
+                  <div className="flex items-center justify-between text-[11px] text-slate-600 pt-2.5 border-t border-slate-200/80 font-mono tabular-nums">
+                    <span className="flex items-center gap-1 font-semibold">
+                      <Key className="w-3.5 h-3.5 text-amber-600" />
+                      {(r.permissions || []).length} مجوز فعال
                     </span>
                     <span className="flex items-center gap-1">
-                      <Users className="w-3.5 h-3.5 text-sky-400" />
+                      <Users className="w-3.5 h-3.5 text-indigo-600" />
                       {r.userCount || 0} کاربر
                     </span>
                   </div>
@@ -157,42 +176,67 @@ export default function RolesPage({
           </div>
         </div>
 
-        {/* Selected Role Detail & Interactive Group/Permission Matrix */}
+        {/* Selected Role Matrix Detail */}
         <div className="lg:col-span-8">
           {selectedRoleDetail ? (
-            <div className="bg-[#111827] border border-slate-800/80 rounded-2xl p-6 space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+            <div className="bg-theme-card border border-slate-200 rounded-xl p-6 space-y-6 shadow-sm">
+              {/* Role Header & Actions */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4">
                 <div>
                   <div className="flex items-center gap-2.5 mb-1">
-                    <h3 id="role-detail-name" className="text-base font-bold text-white">
+                    <h3 id="role-detail-name" className="text-base font-bold text-slate-900">
                       {selectedRoleDetail.name}
                     </h3>
-                    <span className="text-slate-600">·</span>
-                    <span className="font-mono text-xs text-sky-400">
+                    <span className="text-slate-300">·</span>
+                    <span className="font-mono text-xs font-bold text-indigo-600">
                       {selectedRoleDetail.code}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400">{selectedRoleDetail.description}</p>
+                  <p className="text-xs text-slate-500">{selectedRoleDetail.description}</p>
                 </div>
 
-                <div className="text-xs font-mono text-slate-400 tabular-nums shrink-0">
-                  Tenant #{selectedRoleDetail.tenantId} · {(selectedRoleDetail.permissions || []).length} Active Perms
+                <div className="flex items-center gap-2 shrink-0">
+                  {onSetTenantDefaultRole && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onSetTenantDefaultRole(selectedRoleDetail.tenantId, selectedRoleDetail.id)
+                      }
+                      className="px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                      title="PUT /api/admin/tenants/:tenantId/default-role"
+                    >
+                      <Star className="w-3.5 h-3.5 text-amber-500" />
+                      <span>تنظیم به عنوان نقش پیش‌فرض مستأجر</span>
+                    </button>
+                  )}
+
+                  {!selectedRoleDetail.isSystem && onDeleteRole && (
+                    <button
+                      type="button"
+                      onClick={() => onDeleteRole(selectedRoleDetail.id, selectedRoleDetail.code)}
+                      className="px-3 py-1.5 rounded-lg border border-rose-200 hover:bg-rose-50 text-rose-600 text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                      title="DELETE /api/admin/roles/:id"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>حذف نقش</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {/* One-Click Permission Group Attachment (Backend Endpoint: /api/admin/roles/:roleId/groups/:groupId) */}
+              {/* Section 1: One-Click Permission Group Attachment */}
               <div>
-                <div className="flex items-center justify-between mb-2.5">
-                  <h4 className="text-xs font-bold text-slate-200 flex items-center gap-2">
-                    <Layers className="w-4 h-4 text-sky-400" />
-                    <span>اتصال یک‌کلیکی گروه‌های پرمیژن به این نقش (One-Click Group Attach):</span>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3">
+                  <h4 className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-indigo-600" />
+                    <span>۱. اتصال یا جداسازی یک‌کلیکی گروه‌های پرمیژن به این نقش:</span>
                   </h4>
                   <span className="text-[11px] text-slate-400 font-mono">
                     POST / DELETE /api/admin/roles/{selectedRoleDetail.id}/groups/:groupId
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {permissionGroups.map((grp) => {
                     const groupPermCodes = (grp.permissions || [])
                       .filter((p) => p.entitled !== false)
@@ -206,12 +250,12 @@ export default function RolesPage({
                     return (
                       <div
                         key={grp.id}
-                        className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between gap-3"
+                        className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3"
                       >
                         <div className="min-w-0">
-                          <div className="text-xs font-bold text-slate-200 truncate">{grp.name}</div>
-                          <div className="text-[11px] font-mono text-slate-400 mt-0.5">
-                            {grp.code} · {groupPermCodes.length} مجوز مجاز
+                          <div className="text-xs font-bold text-slate-900 truncate">{grp.name}</div>
+                          <div className="text-[11px] font-mono text-slate-500 mt-0.5">
+                            {grp.code} · {groupPermCodes.length} مجوز مجاز مستأجر
                           </div>
                         </div>
 
@@ -219,9 +263,9 @@ export default function RolesPage({
                           <button
                             type="button"
                             onClick={() => onDetachGroupFromRole(selectedRoleDetail.id, grp.id)}
-                            className="px-2.5 py-1.5 rounded-lg bg-rose-950/50 hover:bg-rose-900/70 text-rose-300 border border-rose-800/60 text-[11px] font-medium flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap"
+                            className="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap"
                           >
-                            <Unlink className="w-3 h-3" />
+                            <Unlink className="w-3.5 h-3.5" />
                             <span>جداسازی گروه</span>
                           </button>
                         ) : (
@@ -229,9 +273,9 @@ export default function RolesPage({
                             type="button"
                             disabled={groupPermCodes.length === 0}
                             onClick={() => onAttachGroupToRole(selectedRoleDetail.id, grp.id)}
-                            className="px-2.5 py-1.5 rounded-lg bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 border border-sky-500/40 text-[11px] font-semibold flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap disabled:opacity-40"
+                            className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap disabled:opacity-40"
                           >
-                            <Link2 className="w-3 h-3" />
+                            <Link2 className="w-3.5 h-3.5" />
                             <span>اتصال کامل گروه</span>
                           </button>
                         )}
@@ -241,69 +285,85 @@ export default function RolesPage({
                 </div>
               </div>
 
-              {/* Granular Permission Matrix on Selected Role */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-xs font-bold text-slate-200 flex items-center gap-2">
-                    <Key className="w-4 h-4 text-amber-400" />
-                    <span>ماتریس پرمیژن‌های منتسب به نقش (کلیک برای افزودن یا حذف مجوز):</span>
+              {/* Section 2: Grouped Permission Checkboxes Matrix */}
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                  <h4 className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                    <Key className="w-4 h-4 text-amber-600" />
+                    <span>
+                      ۲. ماتریس تک‌تک پرمیژن‌های نقش (کلیک برای فعال یا غیرفعال‌سازی مجوز در این نقش):
+                    </span>
                   </h4>
-                  <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                    <FileCheck className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>محافظت‌شده توسط گارد استحقاق مستأجر</span>
+                  <span className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
+                    <FileCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>محافظت‌شده توسط گارد استحقاق مستأجر (Entitlement Guard)</span>
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                  {permissionGroups
-                    .flatMap((g) => g.permissions || [])
-                    .map((perm) => {
-                      const isIncluded = (selectedRoleDetail.permissions || []).includes(perm.code);
-                      const isEntitled = perm.entitled !== false;
+                {permissionGroups.map((grp) => (
+                  <div
+                    key={grp.id}
+                    className="border border-slate-200 rounded-xl overflow-hidden"
+                  >
+                    <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-200 flex items-center justify-between text-xs">
+                      <span className="font-bold text-slate-800">{grp.name}</span>
+                      <span className="font-mono text-indigo-600 font-semibold">{grp.code}</span>
+                    </div>
 
-                      return (
-                        <button
-                          type="button"
-                          key={perm.id}
-                          disabled={!isEntitled}
-                          onClick={() => handleToggleExistingRolePerm(perm.code)}
-                          className={`p-3 rounded-xl border text-right flex items-center justify-between gap-3 transition-colors ${
-                            !isEntitled
-                              ? 'bg-slate-950/40 border-slate-800/40 opacity-45 cursor-not-allowed'
-                              : isIncluded
-                              ? 'bg-sky-950/30 border-sky-500/60 cursor-pointer'
-                              : 'bg-slate-900/60 border-slate-800 hover:border-slate-700 cursor-pointer'
-                          }`}
-                        >
-                          <div className="min-w-0">
-                            <div className="font-mono text-xs font-semibold text-slate-100 truncate">
-                              {perm.code}
-                            </div>
-                            <div className="text-[11px] text-slate-400 truncate mt-0.5">
-                              {perm.name}
-                            </div>
-                          </div>
+                    <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-2.5 bg-white">
+                      {(grp.permissions || []).map((perm) => {
+                        const isIncluded = (selectedRoleDetail.permissions || []).includes(
+                          perm.code
+                        );
+                        const isEntitled = perm.entitled !== false;
 
-                          <div className="shrink-0 text-[11px] font-mono">
-                            {!isEntitled ? (
-                              <span className="text-rose-400">REVOKED</span>
-                            ) : isIncluded ? (
-                              <span className="text-emerald-400 flex items-center gap-1 font-semibold">
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                فعال
-                              </span>
-                            ) : (
-                              <span className="text-slate-500">غیرفعال</span>
-                            )}
-                          </div>
-                        </button>
-                      );
-                    })}
-                </div>
+                        return (
+                          <button
+                            type="button"
+                            key={perm.id}
+                            disabled={!isEntitled}
+                            onClick={() => handleToggleExistingRolePerm(perm.code)}
+                            className={`p-3 rounded-lg border text-right flex items-center justify-between gap-3 transition-colors ${
+                              !isEntitled
+                                ? 'bg-slate-100 border-slate-200 opacity-50 cursor-not-allowed'
+                                : isIncluded
+                                ? 'bg-indigo-50/70 border-indigo-500 cursor-pointer'
+                                : 'bg-white border-slate-200 hover:border-slate-300 cursor-pointer'
+                            }`}
+                          >
+                            <div className="min-w-0">
+                              <div className="font-mono text-xs font-bold text-slate-900 truncate">
+                                {perm.code}
+                              </div>
+                              <div className="text-[11px] text-slate-600 truncate mt-0.5">
+                                {perm.name}
+                              </div>
+                            </div>
+
+                            <div className="shrink-0 text-xs font-semibold">
+                              {!isEntitled ? (
+                                <span className="text-rose-600 font-mono text-[11px]">
+                                  سلب از مستأجر
+                                </span>
+                              ) : isIncluded ? (
+                                <span className="text-emerald-700 flex items-center gap-1">
+                                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                  <span>متصل</span>
+                                </span>
+                              ) : (
+                                <span className="text-slate-400">غیرفعال</span>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           ) : (
-            <div className="bg-[#111827] border border-slate-800/80 rounded-2xl p-10 text-center text-slate-400 text-xs">
+            <div className="bg-white border border-slate-200 rounded-xl p-10 text-center text-slate-500 text-xs">
               یک نقش را از ستون سمت راست انتخاب کنید.
             </div>
           )}
@@ -312,26 +372,30 @@ export default function RolesPage({
 
       {/* Modal: Role Builder */}
       {isBuilderOpen && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#111827] border border-slate-700 rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative max-h-[90vh] flex flex-col">
             <button
+              type="button"
               onClick={() => setIsBuilderOpen(false)}
-              className="absolute left-4 top-4 text-slate-400 hover:text-white cursor-pointer"
+              className="absolute left-4 top-4 text-slate-400 hover:text-slate-700 cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
-            <h3 className="text-base font-bold text-white mb-1 flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-sky-400" />
+            <h3 className="text-base font-bold text-slate-900 mb-1 flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-indigo-600" />
               <span>تعریف نقش سفارشی جدید در مستأجر #{targetTid}</span>
             </h3>
-            <p className="text-xs text-slate-400 mb-4">
+            <p className="text-xs text-slate-500 mb-4">
               پرمیژن‌های قابل انتخاب به صورت خودکار به مجوزهای دارای استحقاق این مستأجر محدود شده‌اند
             </p>
 
-            <form onSubmit={handleCreateSubmit} className="flex-1 overflow-y-auto space-y-4 text-xs pr-1 pl-2">
+            <form
+              onSubmit={handleCreateSubmit}
+              className="flex-1 overflow-y-auto space-y-4 text-xs pr-1 pl-2"
+            >
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 mb-1 font-semibold">عنوان فارسی نقش</label>
+                  <label className="block text-slate-700 mb-1 font-semibold">عنوان فارسی نقش</label>
                   <input
                     id="input-role-name"
                     type="text"
@@ -339,11 +403,13 @@ export default function RolesPage({
                     placeholder="مثال: سرپرست کمپین‌های تبلیغاتی"
                     value={newRole.name}
                     onChange={(e) => setNewRole({ ...newRole, name: e.target.value })}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 focus:border-sky-500 focus:outline-none"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:border-indigo-600 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 mb-1 font-semibold">کد سیستمی نقش (Code)</label>
+                  <label className="block text-slate-700 mb-1 font-semibold">
+                    کد سیستمی نقش (Code)
+                  </label>
                   <input
                     id="input-role-code"
                     type="text"
@@ -351,33 +417,36 @@ export default function RolesPage({
                     placeholder="ROLE_CAMPAIGN_LEAD"
                     value={newRole.code}
                     onChange={(e) => setNewRole({ ...newRole, code: e.target.value })}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 font-mono focus:border-sky-500 focus:outline-none"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono focus:border-indigo-600 focus:outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-1 font-semibold">توضیحات اختیارات</label>
+                <label className="block text-slate-700 mb-1 font-semibold">توضیحات اختیارات</label>
                 <input
                   type="text"
                   placeholder="توضیح مختصر درباره دامنه اختیارات این نقش..."
                   value={newRole.description}
                   onChange={(e) => setNewRole({ ...newRole, description: e.target.value })}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 focus:border-sky-500 focus:outline-none"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:border-indigo-600 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 mb-2 font-bold">
+                <label className="block text-slate-800 mb-2 font-bold">
                   انتخاب پرمیژن‌های مجاز مستأجر #{targetTid}:
                 </label>
 
                 <div className="space-y-3">
                   {permissionGroups.map((group) => (
-                    <div key={group.id} className="bg-slate-900/80 border border-slate-800 rounded-xl p-3">
-                      <div className="font-bold text-slate-200 mb-2 flex items-center justify-between">
+                    <div
+                      key={group.id}
+                      className="bg-slate-50 border border-slate-200 rounded-xl p-3"
+                    >
+                      <div className="font-bold text-slate-800 mb-2 flex items-center justify-between">
                         <span>{group.name}</span>
-                        <span className="font-mono text-[11px] text-sky-400">{group.code}</span>
+                        <span className="font-mono text-[11px] text-indigo-600">{group.code}</span>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {(group.permissions || [])
@@ -387,23 +456,23 @@ export default function RolesPage({
                             return (
                               <label
                                 key={p.id}
-                                className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${
+                                className={`flex items-start gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors ${
                                   isChecked
-                                    ? 'bg-sky-950/50 border-sky-500'
-                                    : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
+                                    ? 'bg-indigo-50 border-indigo-500'
+                                    : 'bg-white border-slate-200 hover:border-slate-300'
                                 }`}
                               >
                                 <input
                                   type="checkbox"
                                   checked={isChecked}
                                   onChange={() => handleToggleNewRolePerm(p.code)}
-                                  className="mt-0.5 accent-sky-500"
+                                  className="mt-0.5 accent-indigo-600"
                                 />
                                 <div>
-                                  <span className="font-mono text-xs font-semibold text-slate-200 block">
+                                  <span className="font-mono text-xs font-bold text-slate-900 block">
                                     {p.code}
                                   </span>
-                                  <span className="text-[11px] text-slate-400 block">{p.name}</span>
+                                  <span className="text-[11px] text-slate-600 block">{p.name}</span>
                                 </div>
                               </label>
                             );
@@ -414,18 +483,18 @@ export default function RolesPage({
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-2">
+              <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsBuilderOpen(false)}
-                  className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-800 cursor-pointer"
+                  className="px-4 py-2 rounded-lg text-slate-600 hover:bg-slate-100 cursor-pointer font-semibold"
                 >
                   انصراف
                 </button>
                 <button
                   id="btn-submit-create-role"
                   type="submit"
-                  className="bg-sky-600 hover:bg-sky-500 text-white px-5 py-2 rounded-lg font-semibold cursor-pointer"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg font-semibold cursor-pointer"
                 >
                   ایجاد نقش
                 </button>

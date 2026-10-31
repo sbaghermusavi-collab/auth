@@ -3,8 +3,158 @@
 @tailwind utilities;
 
 @layer base {
-  body {
-    @apply bg-slate-900 text-slate-100;
-    font-family: 'Vazirmatn', system-ui, -apple-system, sans-serif;
+  :root,
+  [data-theme='terracotta'] {
+    /* Primary Brand: Terracotta Copper / Burnt Sienna */
+    --c-brand-50: 253 244 239;
+    --c-brand-100: 250 229 216;
+    --c-brand-200: 243 199 174;
+    --c-brand-300: 232 159 121;
+    --c-brand-400: 217 114 68;
+    --c-brand-500: 204 84 38;
+    --c-brand-600: 191 67 29;
+    --c-brand-700: 158 51 22;
+    --c-brand-800: 128 43 22;
+    --c-brand-900: 104 37 21;
+
+    /* Warm Stone / Espresso Neutrals (replaces cold blue-gray slate) */
+    --c-neutral-50: 249 246 240;
+    --c-neutral-100: 241 235 224;
+    --c-neutral-200: 224 214 198;
+    --c-neutral-300: 201 188 168;
+    --c-neutral-400: 154 139 122;
+    --c-neutral-500: 115 101 87;
+    --c-neutral-600: 87 74 63;
+    --c-neutral-700: 64 53 45;
+    --c-neutral-800: 43 34 29;
+    --c-neutral-900: 27 21 18;
+
+    --c-canvas: #f4efe6;
+    --c-card: #fffdf9;
+    --c-sidebar-bg: #1b1512;
+    --c-sidebar-card: #261e1a;
+    --c-sidebar-border: #362a24;
   }
+
+  [data-theme='emerald'] {
+    /* Primary Brand: Deep Persian Emerald & Jade */
+    --c-brand-50: 238 249 246;
+    --c-brand-100: 212 240 233;
+    --c-brand-200: 171 224 213;
+    --c-brand-300: 118 199 184;
+    --c-brand-400: 66 166 149;
+    --c-brand-500: 25 130 114;
+    --c-brand-600: 11 100 87;
+    --c-brand-700: 10 82 72;
+    --c-brand-800: 11 66 58;
+    --c-brand-900: 10 54 48;
+
+    /* Warm Sage & Cypress Neutrals */
+    --c-neutral-50: 244 247 245;
+    --c-neutral-100: 231 237 233;
+    --c-neutral-200: 207 218 211;
+    --c-neutral-300: 175 191 181;
+    --c-neutral-400: 126 145 134;
+    --c-neutral-500: 91 109 99;
+    --c-neutral-600: 67 83 74;
+    --c-neutral-700: 47 60 53;
+    --c-neutral-800: 29 40 34;
+    --c-neutral-900: 16 29 25;
+
+    --c-canvas: #eef3f0;
+    --c-card: #fcfefd;
+    --c-sidebar-bg: #101d19;
+    --c-sidebar-card: #172923;
+    --c-sidebar-border: #243b33;
+  }
+
+  [data-theme='bordeaux'] {
+    /* Primary Brand: Royal Pomegranate / Bordeaux */
+    --c-brand-50: 253 242 245;
+    --c-brand-100: 250 224 231;
+    --c-brand-200: 244 193 208;
+    --c-brand-300: 233 149 175;
+    --c-brand-400: 215 96 134;
+    --c-brand-500: 186 48 92;
+    --c-brand-600: 155 28 62;
+    --c-brand-700: 130 21 51;
+    --c-brand-800: 108 20 45;
+    --c-brand-900: 90 19 40;
+
+    /* Warm Mulberry & Linen Neutrals */
+    --c-neutral-50: 250 245 244;
+    --c-neutral-100: 241 233 231;
+    --c-neutral-200: 224 211 208;
+    --c-neutral-300: 199 182 178;
+    --c-neutral-400: 153 134 130;
+    --c-neutral-500: 114 96 92;
+    --c-neutral-600: 86 70 67;
+    --c-neutral-700: 63 49 47;
+    --c-neutral-800: 43 30 33;
+    --c-neutral-900: 30 18 22;
+
+    --c-canvas: #f6f0ee;
+    --c-card: #fffcfc;
+    --c-sidebar-bg: #1e1216;
+    --c-sidebar-card: #2b1a20;
+    --c-sidebar-border: #3d252e;
+  }
+
+  [data-theme='bronze'] {
+    /* Primary Brand: Antique Bronze & Ochre */
+    --c-brand-50: 254 247 237;
+    --c-brand-100: 252 234 205;
+    --c-brand-200: 247 209 152;
+    --c-brand-300: 240 175 88;
+    --c-brand-400: 229 140 38;
+    --c-brand-500: 201 103 14;
+    --c-brand-600: 168 75 8;
+    --c-brand-700: 138 57 9;
+    --c-brand-800: 112 46 12;
+    --c-brand-900: 92 38 12;
+
+    /* Warm Obsidian & Parchment Neutrals */
+    --c-neutral-50: 249 246 239;
+    --c-neutral-100: 240 234 221;
+    --c-neutral-200: 222 213 194;
+    --c-neutral-300: 198 186 164;
+    --c-neutral-400: 150 137 116;
+    --c-neutral-500: 111 99 81;
+    --c-neutral-600: 83 73 59;
+    --c-neutral-700: 60 52 42;
+    --c-neutral-800: 39 34 28;
+    --c-neutral-900: 23 21 19;
+
+    --c-canvas: #f5f1e7;
+    --c-card: #fffdf8;
+    --c-sidebar-bg: #171513;
+    --c-sidebar-card: #221f1c;
+    --c-sidebar-border: #332e29;
+  }
+
+  body {
+    background-color: var(--c-canvas);
+    color: rgb(var(--c-neutral-900));
+    font-family: 'Vazirmatn', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  }
+}
+
+.bg-theme-canvas {
+  background-color: var(--c-canvas);
+}
+
+.bg-theme-card {
+  background-color: var(--c-card);
+}
+
+.bg-theme-sidebar {
+  background-color: var(--c-sidebar-bg);
+}
+
+.bg-theme-sidebar-card {
+  background-color: var(--c-sidebar-card);
+}
+
+.border-theme-sidebar {
+  border-color: var(--c-sidebar-border);
 }

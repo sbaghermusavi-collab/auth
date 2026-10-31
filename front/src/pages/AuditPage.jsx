@@ -1,61 +1,87 @@
-import React from 'react';
-import { ShieldAlert, Laptop, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import {
+  ShieldAlert,
+  Laptop,
+  Trash2,
+  CheckCircle2,
+  XCircle,
+  Search
+} from 'lucide-react';
 
 export default function AuditPage({
   auditLogs = [],
   sessions = [],
   currentUser,
-  onRevokeSession
+  onRevokeSession,
+  onRevokeAllOtherSessions
 }) {
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredLogs = auditLogs.filter(
+    (log) =>
+      log.actor?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.target?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.action?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.details?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="space-y-6">
-      {/* Active Sessions Section (/api/sessions/my) */}
-      <div className="bg-[#111827] border border-slate-800/80 rounded-2xl p-5 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+      {/* Section 1: Active Sessions Management (/api/sessions/my, DELETE /api/sessions/:id, DELETE /api/sessions/all-other) */}
+      <div className="bg-theme-card border border-slate-200 border-r-4 border-r-indigo-600 rounded-xl p-6 space-y-4 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4">
           <div>
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <Laptop className="w-5 h-5 text-sky-400" />
-              <span>نشست‌های فعال در درگاه admin.asan.com (Active Sessions)</span>
+            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <Laptop className="w-5 h-5 text-indigo-600" />
+              <span>مدیریت نشست‌های فعال و توکن‌ها (Session Management)</span>
             </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              واکشی زنده از <code className="font-mono text-sky-400">GET /api/sessions/my</code> — امکان ابطال آنی نشست‌ها
+            <p className="text-xs text-slate-500 mt-1 font-mono">
+              GET /api/sessions/my · DELETE /api/sessions/:id · DELETE /api/sessions/all-other
             </p>
           </div>
-          <span className="text-xs font-mono text-slate-400 tabular-nums">
-            {sessions.length} نشست فعال
-          </span>
+
+          {onRevokeAllOtherSessions && (
+            <button
+              type="button"
+              onClick={onRevokeAllOtherSessions}
+              className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 whitespace-nowrap"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>ابطال سایر نشست‌ها (DELETE /api/sessions/all-other)</span>
+            </button>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {sessions.map((sess) => (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {sessions.map((s) => (
             <div
-              key={sess.id}
-              className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 flex flex-col justify-between gap-3 text-xs"
+              key={s.id}
+              className={`p-4 rounded-xl border flex flex-col justify-between gap-3 ${
+                s.current
+                  ? 'bg-indigo-50/50 border-indigo-400'
+                  : 'bg-slate-50 border-slate-200'
+              }`}
             >
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-mono font-bold text-sky-400">@{sess.username}</span>
-                  <span className="font-mono text-[11px] text-slate-400">
-                    Tenant #{sess.tenantId}
-                  </span>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-mono font-bold text-indigo-600">@{s.username}</span>
+                  <span className="font-mono text-[11px] text-slate-500">{s.sessionTokenId}</span>
                 </div>
-                <div className="text-slate-200 font-medium">{sess.userAgent}</div>
-                <div className="text-[11px] font-mono text-slate-400 mt-1 tabular-nums">
-                  IP: {sess.ip} · {sess.createdAt}
+                <div className="text-xs font-bold text-slate-900">{s.device}</div>
+                <div className="text-[11px] font-mono text-slate-500 tabular-nums">
+                  IP: {s.ip} · Tenant #{s.tenantId}
                 </div>
               </div>
 
-              <div className="pt-2.5 border-t border-slate-800 flex items-center justify-between">
-                <span className="font-mono text-[11px] text-slate-500">
-                  {sess.sessionTokenId}
-                </span>
-                {sess.current ? (
-                  <span className="text-[11px] text-emerald-400 font-semibold">نشست جاری</span>
+              <div className="pt-2.5 border-t border-slate-200/80 flex items-center justify-between text-xs">
+                <span className="text-[11px] text-slate-500">{s.createdAt}</span>
+                {s.current ? (
+                  <span className="text-teal-700 font-bold text-[11px]">نشست فعلی شما</span>
                 ) : (
                   <button
                     type="button"
-                    onClick={() => onRevokeSession && onRevokeSession(sess.id)}
-                    className="text-rose-400 hover:text-rose-300 text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
+                    onClick={() => onRevokeSession(s.id)}
+                    className="text-rose-600 hover:text-rose-800 flex items-center gap-1 font-semibold cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>ابطال نشست</span>
@@ -67,65 +93,69 @@ export default function AuditPage({
         </div>
       </div>
 
-      {/* Audit Trail Table */}
-      <div className="bg-[#111827] border border-slate-800/80 rounded-2xl overflow-hidden">
-        <div className="p-5 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      {/* Section 2: Security Audit Trail Table */}
+      <div className="bg-theme-card border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+        <div className="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <ShieldAlert className="w-5 h-5 text-amber-400" />
-              <span>لاگ ممیزی تغییرات پرمیژن و جعل هویت (RFC 8693 Security Audit Trail)</span>
+            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5 text-amber-600" />
+              <span>لاگ ممیزی امنیتی و وقایع دسترسی (Audit Trail — RFC 8693)</span>
             </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              ثبت تمامی رخدادهای اعطا/سلب پرمیژن مستأجرین، تغییر نقش کاربران و تبادل توکن جعل هویت
+            <p className="text-xs text-slate-500 mt-1 font-mono">
+              GET /api/admin/audit-logs · GET /api/reports/users/:username/logs
             </p>
           </div>
-          <span className="text-xs font-mono text-slate-400 tabular-nums">
-            {auditLogs.length} رخداد ثبت‌شده
-          </span>
+
+          <div className="relative w-full sm:w-72">
+            <Search className="w-4 h-4 text-slate-400 absolute right-3 top-2.5" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="جستجو در نام عامل، هدف یا عملیات..."
+              className="w-full bg-slate-50 border border-slate-300 rounded-lg pr-9 pl-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-600"
+            />
+          </div>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-right text-xs">
-            <thead className="bg-slate-900/90 text-slate-400 font-semibold border-b border-slate-800">
+            <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
               <tr>
-                <th className="py-3.5 px-4">شناسه</th>
-                <th className="py-3.5 px-4">زمان ثبت</th>
-                <th className="py-3.5 px-4">کاربر مجری (Actor)</th>
-                <th className="py-3.5 px-4">هدف عملیات</th>
-                <th className="py-3.5 px-4">نوع رخداد</th>
-                <th className="py-3.5 px-4">وضعیت</th>
-                <th className="py-3.5 px-4">شرح فنی</th>
+                <th className="py-3.5 px-4">شناسه و زمان</th>
+                <th className="py-3.5 px-4">عامل (Actor)</th>
+                <th className="py-3.5 px-4">عملیات سیستمی</th>
+                <th className="py-3.5 px-4">موجودیت هدف</th>
+                <th className="py-3.5 px-4">شرح فنی رویداد</th>
+                <th className="py-3.5 px-4 text-left">وضعیت</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60">
-              {auditLogs.map((log) => (
-                <tr key={log.id} className="hover:bg-slate-900/50 transition-colors">
-                  <td className="py-3 px-4 font-mono font-bold text-slate-400 tabular-nums">
-                    {log.id}
+            <tbody className="divide-y divide-slate-200/80">
+              {filteredLogs.map((log) => (
+                <tr key={log.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="py-3 px-4 font-mono tabular-nums">
+                    <div className="text-slate-900 font-bold">{log.id}</div>
+                    <div className="text-[11px] text-slate-500">{log.timestamp}</div>
                   </td>
-                  <td className="py-3 px-4 text-slate-300 font-mono text-[11px] tabular-nums">
-                    {log.timestamp}
+                  <td className="py-3 px-4 font-mono">
+                    <span className="text-indigo-600 font-bold">@{log.actor}</span>
+                    <div className="text-[11px] text-slate-500">{log.ip}</div>
                   </td>
-                  <td className="py-3 px-4 font-mono font-semibold text-sky-400">
-                    @{log.actor}
-                  </td>
-                  <td className="py-3 px-4 font-mono text-slate-200">{log.target}</td>
-                  <td className="py-3 px-4 font-mono text-amber-300">{log.action}</td>
-                  <td className="py-3 px-4 font-mono text-[11px]">
+                  <td className="py-3 px-4 font-mono font-bold text-slate-800">{log.action}</td>
+                  <td className="py-3 px-4 font-mono text-slate-700">{log.target}</td>
+                  <td className="py-3 px-4 text-slate-600 max-w-md">{log.details}</td>
+                  <td className="py-3 px-4 text-left font-mono">
                     {log.status === 'SUCCESS' ? (
-                      <span className="text-emerald-400 flex items-center gap-1 font-semibold">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        SUCCESS
+                      <span className="inline-flex items-center gap-1 text-emerald-700 font-bold">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>SUCCESS</span>
                       </span>
                     ) : (
-                      <span className="text-rose-400 flex items-center gap-1 font-semibold">
-                        <XCircle className="w-3.5 h-3.5" />
-                        {log.status}
+                      <span className="inline-flex items-center gap-1 text-rose-700 font-bold">
+                        <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                        <span>{log.status}</span>
                       </span>
                     )}
-                  </td>
-                  <td className="py-3 px-4 text-slate-400 text-[11px] font-mono">
-                    {log.details}
                   </td>
                 </tr>
               ))}

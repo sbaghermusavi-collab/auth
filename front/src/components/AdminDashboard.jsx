@@ -2,31 +2,25 @@ import React from 'react';
 import {
   LayoutDashboard,
   Building2,
-  Users,
   Key,
   ShieldCheck,
+  Users,
   ShieldAlert,
   Settings,
-  Globe,
-  Layers
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import Sidebar from './layout/Sidebar';
 import Header from './layout/Header';
 import ImpersonationBanner from './layout/ImpersonationBanner';
 import DashboardPage from '../pages/DashboardPage';
 import TenantsPage from '../pages/TenantsPage';
-import UsersPage from '../pages/UsersPage';
 import PermissionsPage from '../pages/PermissionsPage';
 import RolesPage from '../pages/RolesPage';
+import UsersPage from '../pages/UsersPage';
 import AuditPage from '../pages/AuditPage';
 import SettingsPage from '../pages/SettingsPage';
-import { UNIFIED_ADMIN_HOST } from '../api/iamService';
 
-/**
- * Centralized Admin Dashboard Component (admin.asan.com)
- * Unifies Tenant Management, User Management, and System-Wide Permission Settings
- * under a single host-bound governance shell with a synchronized navigation menu.
- */
 export default function AdminDashboard({
   activeTab,
   onSelectTab,
@@ -36,6 +30,7 @@ export default function AdminDashboard({
   activeTenantId,
   activeTenantObj,
   users = [],
+  userGroups = [],
   roles = [],
   permissionGroups = [],
   auditLogs = [],
@@ -45,26 +40,36 @@ export default function AdminDashboard({
   onOpenClaimsModal,
   onLogout,
   onImpersonate,
+  onImpersonateTenant,
   onRevert,
   onUpdateUserStatus,
   onUpdateUserAccess,
   onCreateUser,
+  onDeleteUser,
+  onCreateUserGroup,
+  onAssignPermissionToUserGroup,
   onCreateRole,
   onUpdateRole,
+  onDeleteRole,
   onAttachGroupToRole,
   onDetachGroupFromRole,
+  onSetTenantDefaultRole,
   onGrantPermission,
   onRevokePermission,
   onGrantGroup,
   onRevokeGroup,
   onCreatePermission,
+  onUpdatePermission,
+  onDeletePermission,
+  onCreatePermissionGroup,
+  onDeletePermissionGroup,
   onCreateTenant,
   onUpdateTenant,
+  onDeleteTenant,
   onCloneTenant,
-  onRevokeSession
+  onRevokeSession,
+  onRevokeAllOtherSessions
 }) {
-  const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
-
   const totalCatalogPerms = permissionGroups.reduce(
     (acc, g) => acc + (g.permissions ? g.permissions.length : 0),
     0
@@ -75,85 +80,57 @@ export default function AdminDashboard({
     0
   );
 
-  // Core Pillars defined for centralized switching
-  const primaryNavigationTabs = [
-    {
-      id: 'dashboard',
-      label: 'مرکز فرماندهی (Overview)',
-      shortDesc: 'نمای یکپارچه سامانه',
-      icon: LayoutDashboard,
-      metric: UNIFIED_ADMIN_HOST
-    },
-    {
-      id: 'tenants',
-      label: 'مدیریت مستأجرین (Tenant Management)',
-      shortDesc: isSuperAdmin ? 'ایجاد، کلون و ماژول‌های مستأجر' : 'مشخصات و ماژول‌های مستأجر جاری',
-      icon: Building2,
-      metric: `${tenants.length} مستأجر`
-    },
-    {
-      id: 'users',
-      label: 'مدیریت کاربران (User Management)',
-      shortDesc: 'حساب‌ها، نقش‌ها و مجوزهای فردی',
-      icon: Users,
-      metric: `${users.length} کاربر`
-    },
+  const quickTabs = [
+    { id: 'dashboard', label: 'پیشخوان و معماری', icon: LayoutDashboard },
+    { id: 'tenants', label: `مستأجرین و کلون (${tenants.length})`, icon: Building2 },
     {
       id: 'permissions',
-      label: 'تنظیمات پرمیژن‌های سراسری (System Permissions)',
-      shortDesc: isSuperAdmin ? 'کاتالوگ سراسری و استحقاق مستأجرین' : 'استحقاق پرمیژن‌های مستأجر',
-      icon: Key,
-      metric: `${entitledPermsCount}/${totalCatalogPerms || 14} مجوز`
+      label: `استحقاق و پرمیژن‌ها (${entitledPermsCount}/${totalCatalogPerms || 14})`,
+      icon: Key
     },
-    {
-      id: 'roles',
-      label: 'ماتریس نقش‌ها (Roles)',
-      shortDesc: 'اتصال گروه‌های پرمیژن به نقش',
-      icon: ShieldCheck,
-      metric: `${roles.length} نقش`
-    },
-    {
-      id: 'audit',
-      label: 'ممیزی و نشست‌ها (Audit)',
-      shortDesc: 'لاگ‌های RFC 8693 و نشست‌های فعال',
-      icon: ShieldAlert,
-      metric: `${auditLogs.length} رویداد`
-    },
-    {
-      id: 'settings',
-      label: 'سیاست‌های ۲FA',
-      shortDesc: 'تنظیمات امنیتی درگاه',
-      icon: Settings,
-      metric: 'OTP/2FA'
-    }
+    { id: 'roles', label: `نقش‌ها و گروه‌ها (${roles.length})`, icon: ShieldCheck },
+    { id: 'users', label: `کاربران و مجوزها (${users.length})`, icon: Users },
+    { id: 'audit', label: `ممیزی و نشست‌ها (${auditLogs.length})`, icon: ShieldAlert },
+    { id: 'settings', label: 'سیاست‌های ۲FA', icon: Settings }
   ];
 
   return (
-    <div className="flex min-h-screen bg-[#0b0f17] text-slate-100 font-sans antialiased" dir="rtl">
+    <div className="flex min-h-screen bg-theme-canvas text-slate-900 font-sans antialiased" dir="rtl">
       {/* Toast Notification */}
       {notification && (
         <div
-          className={`fixed bottom-5 left-5 z-50 px-4 py-2.5 rounded-xl shadow-2xl text-xs font-medium border ${
+          className={`fixed bottom-5 left-5 z-50 px-4 py-3 rounded-xl shadow-lg text-xs font-semibold border flex items-center gap-2 ${
             notification.type === 'error'
-              ? 'bg-rose-950 border-rose-700 text-rose-100'
-              : 'bg-slate-900 border-sky-500/60 text-slate-100'
+              ? 'bg-rose-50 border-rose-300 text-rose-900'
+              : 'bg-theme-sidebar border-theme-sidebar text-stone-100'
           }`}
         >
-          {notification.message}
+          {notification.type === 'error' ? (
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+          ) : (
+            <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
+          )}
+          <span>{notification.message}</span>
         </div>
       )}
 
-      {/* Right-Hand Persistent Sidebar Navigation */}
+      {/* Persistent Sidebar */}
       <Sidebar
         activeTab={activeTab}
         onSelectTab={onSelectTab}
         currentUser={currentUser}
         activeTenant={activeTenantObj}
+        counts={{
+          tenants: tenants.length,
+          permissions: `${entitledPermsCount}/${totalCatalogPerms || 14}`,
+          roles: roles.length,
+          users: users.length,
+          audit: auditLogs.length
+        }}
       />
 
-      {/* Main Content Shell */}
+      {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* RFC 8693 Impersonation Banner */}
         <ImpersonationBanner
           isImpersonated={currentUser?.isImpersonated}
           targetUser={currentUser?.targetUsername || currentUser?.username}
@@ -161,7 +138,6 @@ export default function AdminDashboard({
           onRevert={onRevert}
         />
 
-        {/* Top Bar Contract (Breadcrumb, Tenant Scope Switcher, JWT/Session Action) */}
         <Header
           activeTab={activeTab}
           currentUser={currentUser}
@@ -172,55 +148,28 @@ export default function AdminDashboard({
           onLogout={onLogout}
         />
 
-        {/* Centralized Admin Navigation Bar (Quick Workspace Switcher) */}
-        <div className="bg-[#111827]/90 border-b border-slate-800/80 px-6 py-2.5">
-          <div className="max-w-[1440px] mx-auto flex flex-col xl:flex-row xl:items-center justify-between gap-3">
-            {/* Segmented Navigation Menu */}
-            <nav
-              aria-label="منوی ناوبری متمرکز مدیریت"
-              className="flex items-center gap-1.5 overflow-x-auto pb-1 xl:pb-0 no-scrollbar"
-            >
-              {primaryNavigationTabs.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => onSelectTab(tab.id)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer whitespace-nowrap border ${
-                      isActive
-                        ? 'bg-sky-600/15 border-sky-500/50 text-sky-300 font-semibold'
-                        : 'bg-[#0b0f17]/60 border-slate-800/80 text-slate-400 hover:text-slate-200 hover:border-slate-700'
-                    }`}
-                  >
-                    <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-sky-400' : 'text-slate-500'}`} />
-                    <span>{tab.label}</span>
-                    <span
-                      className={`text-[11px] font-mono tabular-nums pr-1.5 border-r ${
-                        isActive
-                          ? 'text-sky-300 border-sky-500/40'
-                          : 'text-slate-500 border-slate-800'
-                      }`}
-                    >
-                      {tab.metric}
-                    </span>
-                  </button>
-                );
-              })}
-            </nav>
-
-            {/* Active Tenant & Host Context Readout */}
-            <div className="hidden 2xl:flex items-center gap-2 text-[11px] text-slate-400 shrink-0">
-              <Layers className="w-3.5 h-3.5 text-sky-400" />
-              <span>قلمرو فعال:</span>
-              <span className="font-mono text-slate-200 font-semibold">
-                {activeTenantObj ? `${activeTenantObj.name} (${activeTenantObj.code})` : `Tenant #${activeTenantId}`}
-              </span>
-              <span className="text-slate-700">·</span>
-              <Globe className="w-3.5 h-3.5 text-slate-500" />
-              <span className="font-mono text-sky-400">{UNIFIED_ADMIN_HOST}</span>
-            </div>
+        {/* Centralized Segmented Navigation Bar */}
+        <div className="bg-slate-100/90 border-b border-slate-200 px-6 py-2.5">
+          <div className="max-w-[1440px] mx-auto flex items-center gap-2 overflow-x-auto">
+            {quickTabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => onSelectTab(tab.id)}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 border ${
+                    isActive
+                      ? 'bg-indigo-600 border-indigo-700 text-white shadow-sm'
+                      : 'bg-theme-card border-slate-200/80 text-slate-700 hover:text-slate-900 hover:border-slate-300'
+                  }`}
+                >
+                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-amber-200' : 'text-indigo-600'}`} />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -231,7 +180,6 @@ export default function AdminDashboard({
               users={users}
               roles={roles}
               tenants={tenants}
-              modules={modules}
               permissionGroups={permissionGroups}
               auditLogs={auditLogs}
               activeTenantId={activeTenantId}
@@ -245,31 +193,20 @@ export default function AdminDashboard({
             <TenantsPage
               tenants={tenants}
               modules={modules}
+              roles={roles}
               activeTenantId={activeTenantId}
               currentUser={currentUser}
               onSelectTenant={onTenantSwitch}
               onCreateTenant={onCreateTenant}
               onUpdateTenant={onUpdateTenant}
+              onDeleteTenant={onDeleteTenant}
               onCloneTenant={onCloneTenant}
+              onSetTenantDefaultRole={onSetTenantDefaultRole}
+              onImpersonateTenant={onImpersonateTenant}
               onManageTenantPermissions={(tid) => {
                 onTenantSwitch(String(tid));
                 onSelectTab('permissions');
               }}
-            />
-          )}
-
-          {activeTab === 'users' && (
-            <UsersPage
-              users={users}
-              roles={roles}
-              permissionGroups={permissionGroups}
-              tenants={tenants}
-              activeTenantId={activeTenantId}
-              currentUser={currentUser}
-              onImpersonate={onImpersonate}
-              onUpdateUser={onUpdateUserStatus}
-              onUpdateUserAccess={onUpdateUserAccess}
-              onCreateUser={onCreateUser}
             />
           )}
 
@@ -285,19 +222,45 @@ export default function AdminDashboard({
               onGrantGroup={onGrantGroup}
               onRevokeGroup={onRevokeGroup}
               onCreatePermission={onCreatePermission}
+              onUpdatePermission={onUpdatePermission}
+              onDeletePermission={onDeletePermission}
+              onCreatePermissionGroup={onCreatePermissionGroup}
+              onDeletePermissionGroup={onDeletePermissionGroup}
             />
           )}
 
           {activeTab === 'roles' && (
             <RolesPage
               roles={roles}
+              tenants={tenants}
               permissionGroups={permissionGroups}
               activeTenantId={activeTenantId}
               currentUser={currentUser}
               onCreateRole={onCreateRole}
               onUpdateRole={onUpdateRole}
+              onDeleteRole={onDeleteRole}
               onAttachGroupToRole={onAttachGroupToRole}
               onDetachGroupFromRole={onDetachGroupFromRole}
+              onSetTenantDefaultRole={onSetTenantDefaultRole}
+            />
+          )}
+
+          {activeTab === 'users' && (
+            <UsersPage
+              users={users}
+              userGroups={userGroups}
+              roles={roles}
+              permissionGroups={permissionGroups}
+              tenants={tenants}
+              activeTenantId={activeTenantId}
+              currentUser={currentUser}
+              onImpersonate={onImpersonate}
+              onUpdateUser={onUpdateUserStatus}
+              onUpdateUserAccess={onUpdateUserAccess}
+              onCreateUser={onCreateUser}
+              onDeleteUser={onDeleteUser}
+              onCreateUserGroup={onCreateUserGroup}
+              onAssignPermissionToUserGroup={onAssignPermissionToUserGroup}
             />
           )}
 
@@ -307,6 +270,7 @@ export default function AdminDashboard({
               sessions={sessions}
               currentUser={currentUser}
               onRevokeSession={onRevokeSession}
+              onRevokeAllOtherSessions={onRevokeAllOtherSessions}
             />
           )}
 
