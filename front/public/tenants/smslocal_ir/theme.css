@@ -1,0 +1,7 @@
+/* Tenant Theme: smslocal (Cyan / Blue Accent) */
+:root {
+  --brand-primary: 2 136 209 !important;
+  --brand-secondary: 0 188 212 !important;
+  --brand-border: 200 230 245 !important;
+  --brand-bg-primary: 244 249 253 !important;
+}

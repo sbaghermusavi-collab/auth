@@ -1,0 +1,95 @@
+spring:
+  application:
+    name: authorization-service
+  config:
+    import: "optional:configserver:http://192.168.100.198:20000"
+  output:
+    ansi:
+      enabled: ALWAYS
+  datasource:
+    url: ${MYSQL_AUTH_URL:jdbc:mysql://192.168.100.123:3309/PLAN_B_MILKY_WAY_AUTH_SERVICE?useUnicode=yes&characterEncoding=UTF-8&autoReconnect=true}
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:rootpassword}
+    driverClassName: com.mysql.cj.jdbc.Driver
+  rabbitmq:
+    host: ${RABBITMQ_HOST:192.168.100.124}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+  data:
+    redis:
+      host: ${REDIS_HOST:192.168.100.129}
+      port: ${REDIS_PORT:6379}
+      database: ${REDIS_DATABASE:8}
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+  liquibase:
+    database-change-log-table: Z_LIQ_CHANGELOG
+    database-change-log-lock-table: Z_LIQ_CHANGELOG_LOCK
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.xml
+  h2:
+    console:
+      enabled: false
+  thymeleaf:
+    prefix: classpath:/templates/
+    suffix: .html
+    cache: false
+    mode: HTML
+
+logging:
+  level:
+    root: INFO
+    com.bontech.auth: DEBUG
+    org.springframework.security: DEBUG
+    com.zaxxer.hikari: WARN
+    liquibase: INFO
+app:
+  jwt:
+    secret: "01234567890123456789012345678901"
+    expiration-seconds: 3600
+  captcha:
+    url: "http://milky.peykasa.ir/api/user-service/captcha/generate"
+    validate-url: "http://milky.peykasa.ir/api/user-service/captcha/validate"
+  sms:
+    sender-api-url: "https://sms.example/send"
+    sender-api-key: "replace-with-real-key"
+    notification:
+      adapter: "logging"
+  auth:
+    otp-enabled: true
+    password-enabled: true
+    captcha-enabled: false
+    test-mode: true
+    otp-expiration-seconds: 180
+    login-inactivity-timeout-seconds: 180
+  app-root-url: ${APP_ROOT_URL:http://localhost:8090/}
+  default-tenant: "default"
+  default-tenant-config:
+    brand-name: "آسانک"
+    title: "آسانک — سامانه پیامک و ارتباطات"
+    logo-url: "/auth/tenant-assets/logo"
+    theme-tone: "dark"
+    animation-type: "orbit"
+    primary-color: "#0C747C"
+    secondary-color: "#FABD09"
+    auth-bg: "#0a3034"
+    otp-enabled: true
+    password-enabled: true
+    captcha-enabled: false
+
+auth:
+  user:
+    signup:
+      exchange: ${AUTH_USER_SIGNUP_EXCHANGE:auth-user-signup-exchange}
+      queue: ${AUTH_USER_SIGNUP_QUEUE:auth-user-signup-queue}
+      routing-key: ${AUTH_USER_SIGNUP_ROUTING_KEY:auth.user.signup}
+
+server:
+  max-http-request-header-size: 100KB
+  servlet:
+    context-path: /auth
+  forward-headers-strategy: framework
+  port: ${AUTH_SERVER_PORT:8080}

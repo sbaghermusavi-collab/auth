@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog logicalFilePath="db/changelog/db.changelog-master.yaml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+  <include file="db/changelog/001-create-tables.xml"/>
+  <include file="db/changelog/002-seed-data.xml"/>
+  <include file="db/changelog/004-seed-users-roles-permissions.xml"/>
+  <include file="db/changelog/005-seed-someuser.xml"/>
+  <include file="db/changelog/006-add-tenant-id.xml"/>
+  <include file="db/changelog/007-seed-all-roles-permissions.xml"/>
+  <include file="db/changelog/008-seed-user-phone-numbers.xml"/>
+  <include file="db/changelog/009-refresh-token-and-profile.xml"/>
+  <include file="db/changelog/010-tenant-management-columns.xml"/>
+  <include file="db/changelog/011-tenant-ui-and-auth-config.xml"/>
+  <include file="db/changelog/012-user-status-tenant-roles-and-entitlements.xml"/>
+  <include file="db/changelog/013-role-groups-and-default.xml"/>
+  <include file="db/changelog/014-seed-service-account-keycloak-manager.xml"/>
+</databaseChangeLog>

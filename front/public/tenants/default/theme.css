@@ -1,0 +1,7 @@
+/* Tenant Theme: default */
+:root {
+  --brand-primary: 250 189 9 !important;
+  --brand-secondary: 12 116 124 !important;
+  --brand-border: 229 231 235 !important;
+  --brand-bg-primary: 247 248 250 !important;
+}

@@ -1,0 +1,150 @@
+server:
+  port: 8080
+  max-http-request-header-size: 100KB
+  reactive:
+    session:
+      timeout: 5h
+  forward-headers-strategy: framework
+spring:
+  application:
+    name: api-gateway
+  session:
+    store-type: redis
+  data:
+    redis:
+      host: ${REDIS_HOST:192.168.100.129}
+      port: ${REDIS_PORT:6379}
+      database: ${REDIS_DATABASE:7}
+  datasource:
+    url: ${MYSQL_URL:jdbc:mysql://192.168.100.123:3309/PLAN_B_MILKY_WAY_AUTH_SERVICE?useUnicode=yes&characterEncoding=UTF-8&autoReconnect=true}
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:rootpassword}
+  jpa:
+    hibernate:
+      ddl-auto: none
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            client-id: asanak
+            client-secret: FoHnEjcMn0ivnr0CV384qicgcEIPuTB4
+            authorization-grant-type: authorization_code
+            scope: openid, profile, email
+            redirect-uri: "{baseUrl}/login/oauth2/code/keycloak"
+          admin-client:
+            client-id: asanak-admin
+            client-secret: FoHnEjcMn0ivnr0CV384qicgcEIPuTB4
+            authorization-grant-type: authorization_code
+            scope: openid, profile, email
+            redirect-uri: "{baseUrl}/login/oauth2/code/admin-client"
+            provider: keycloak
+        provider:
+          keycloak:
+            user-name-attribute: preferred_username
+            authorization-uri: ${AUTH_SERVER_PUBLIC_URL:http://localhost:8090}/auth/oauth2/authorize
+            token-uri: ${AUTH_SERVER_INTERNAL_URL:${AUTH_SERVER_URL:http://localhost:9005}}/auth/oauth2/token
+            user-info-uri: ${AUTH_SERVER_INTERNAL_URL:${AUTH_SERVER_URL:http://localhost:9005}}/auth/userinfo
+            jwk-set-uri: ${AUTH_SERVER_INTERNAL_URL:${AUTH_SERVER_URL:http://localhost:9005}}/auth/oauth2/jwks
+  cloud:
+    gateway:
+      default-filters:
+        - TokenRelay
+      routes:
+
+        - id: auth-service
+          uri: ${AUTH_SERVER_URL:http://localhost:9005}
+          predicates:
+            - Path=/api/auth/**, /api/sessions/**, /api/admin/**, /api/tenant-admin/**, /api/tenant-management/**
+          filters:
+            - PrefixPath=/auth
+
+        - id: resource-server
+          uri: ${USER_SERVICE_URI:http://user-service:8080}
+          predicates:
+            - Path=/api/me, /api/me/**
+          filters:
+            - RewritePath=/api/me, /users/me
+
+        - id: captcha-route
+          uri: http://192.168.100.123:8089
+          predicates:
+            - Path=/api/user-service/captcha/**
+          filters:
+            - RewritePath=/api/user-service/(?<segment>.*), /${segment}
+
+        - id: ticket
+          uri: http://192.168.100.123:8088
+          predicates:
+            - Path=/api/ticketing-service/
+          filters:
+            - RewritePath=/api/ticketing-service/(?<segment>.*), /${segment}
+
+        - id: userservie
+          uri: ${USER_SERVICE_URI:http://user-service:8080}
+          predicates:
+            - Path=/api/user-service/**
+          filters:
+            - RewritePath=/api/user-service/(?<segment>.*), /${segment}
+
+        - id: userservie-short
+          uri: ${USER_SERVICE_URI:http://user-service:8080}
+          predicates:
+            - Path=/api/user/**
+          filters:
+            - RewritePath=/api/user/(?<segment>.*), /users/${segment}
+
+        - id: smsbox
+          uri: http://192.168.100.123:8087
+          predicates:
+            - Path=/sms-box/**
+          filters:
+            - RewritePath=/api/sms-box/(?<segment>.*), /${segment}
+
+        - id: number
+          uri: ${NUMBER_SERVICE_URI:http://number-service:8080}
+          predicates:
+            - Path=/api/number/**
+          filters:
+            - RewritePath=/api/number/(?<segment>.*), /${segment}
+
+        - id: phonebook
+          uri: ${PHONEBOOK_SERVICE_URI:http://localhost:9094}
+          predicates:
+            - Path=/api/phonebook-service/**
+          filters:
+            - RewritePath=/api/phonebook-service/(?<segment>.*), /${segment}
+
+        - id: phonebook-short
+          uri: ${PHONEBOOK_SERVICE_URI:http://localhost:9094}
+          predicates:
+            - Path=/api/phonebook/**
+          filters:
+            - RewritePath=/api/phonebook/(?<segment>.*), /${segment}
+
+        - id: notification
+          uri: http://localhost:8095
+          predicates:
+            - Path=/api/notification/**
+          filters:
+            - RewritePath=/api/notification/(?<segment>.*), /${segment}
+
+        - id: payment
+          uri: http://localhost:8091
+          predicates:
+            - Path=/api/payment-service/**
+          filters:
+            - RewritePath=/api/payment-service/(?<segment>.*), /${segment}
+
+        - id: dashboard-ui
+          uri: ${DASHBOARD_URI:http://localhost:5173}
+          predicates:
+            - Path=/**
+
+    config:
+      enabled: false
+
+security:
+  public-paths: /actuator/health,/public/**,/login/oauth2/**,/oauth2/**,/api/reg-service/**,/api/user-service/**,/api/v1/permission/logout,/logout,/api/auth/**,/api/sessions/**,/api/admin/**,/api/tenant-admin/**,/api/tenant-management/**
+impersonation:
+  required-role: realm-admin

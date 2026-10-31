@@ -1,0 +1,188 @@
+http:
+  middlewares:
+    add-auth-prefix:
+      addPrefix:
+        prefix: "/auth"
+
+    tenant-smslocal:
+      headers:
+        customRequestHeaders:
+          X-Tenant-Id: "smslocal"
+          X-TENANT-ID: "SMSLOCAL_IR"
+
+    tenant-asanlocal:
+      headers:
+        customRequestHeaders:
+          X-Tenant-Id: "asanlocal"
+          X-TENANT-ID: "ASANLOCAL_IR"
+
+    tenant-bagherlocal:
+      headers:
+        customRequestHeaders:
+          X-Tenant-Id: "default"
+          X-TENANT-ID: "DEFAULT"
+
+    tenant-admin:
+      headers:
+        customRequestHeaders:
+          X-Forwarded-Proto: "http"
+
+  routers:
+    # --- Auth Service Routers ---
+    auth-smslocal:
+      rule: "Host(`smslocal.ir`) && PathPrefix(`/auth`)"
+      priority: 120
+      entryPoints: ["web"]
+      middlewares: ["tenant-smslocal"]
+      service: "auth-service"
+
+    auth-asanlocal:
+      rule: "Host(`asanlocal.ir`) && PathPrefix(`/auth`)"
+      priority: 120
+      entryPoints: ["web"]
+      middlewares: ["tenant-asanlocal"]
+      service: "auth-service"
+
+    auth-bagherlocal:
+      rule: "Host(`bagherlocal.ir`) && PathPrefix(`/auth`)"
+      priority: 120
+      entryPoints: ["web"]
+      middlewares: ["tenant-bagherlocal"]
+      service: "auth-service"
+
+    auth-admin:
+      rule: "(Host(`admin.bagherlocal.ir`) || Host(`admin.asanlocal.ir`) || Host(`admin.smslocal.ir`)) && PathPrefix(`/auth`)"
+      priority: 120
+      entryPoints: ["web"]
+      service: "auth-service"
+
+    auth-api-smslocal:
+      rule: "Host(`smslocal.ir`) && (PathPrefix(`/api/auth`) || PathPrefix(`/api/sessions`))"
+      priority: 125
+      entryPoints: ["web"]
+      middlewares: ["tenant-smslocal", "add-auth-prefix"]
+      service: "auth-service"
+
+    auth-api-asanlocal:
+      rule: "Host(`asanlocal.ir`) && (PathPrefix(`/api/auth`) || PathPrefix(`/api/sessions`))"
+      priority: 125
+      entryPoints: ["web"]
+      middlewares: ["tenant-asanlocal", "add-auth-prefix"]
+      service: "auth-service"
+
+    auth-api-bagherlocal:
+      rule: "Host(`bagherlocal.ir`) && (PathPrefix(`/api/auth`) || PathPrefix(`/api/sessions`))"
+      priority: 125
+      entryPoints: ["web"]
+      middlewares: ["tenant-bagherlocal", "add-auth-prefix"]
+      service: "auth-service"
+
+    auth-api-admin:
+      rule: "(Host(`admin.bagherlocal.ir`) || Host(`admin.asanlocal.ir`) || Host(`admin.smslocal.ir`)) && (PathPrefix(`/api/auth`) || PathPrefix(`/api/sessions`))"
+      priority: 125
+      entryPoints: ["web"]
+      middlewares: ["add-auth-prefix"]
+      service: "auth-service"
+
+    # --- API Gateway (BFF) Routers ---
+    gateway-smslocal:
+      rule: "Host(`smslocal.ir`) && (PathPrefix(`/api`) || PathPrefix(`/oauth2`) || PathPrefix(`/login/oauth2`) || PathPrefix(`/logout`))"
+      priority: 110
+      entryPoints: ["web"]
+      middlewares: ["tenant-smslocal"]
+      service: "gateway-service"
+
+    gateway-asanlocal:
+      rule: "Host(`asanlocal.ir`) && (PathPrefix(`/api`) || PathPrefix(`/oauth2`) || PathPrefix(`/login/oauth2`) || PathPrefix(`/logout`))"
+      priority: 110
+      entryPoints: ["web"]
+      middlewares: ["tenant-asanlocal"]
+      service: "gateway-service"
+
+    gateway-bagherlocal:
+      rule: "Host(`bagherlocal.ir`) && (PathPrefix(`/api`) || PathPrefix(`/oauth2`) || PathPrefix(`/login/oauth2`) || PathPrefix(`/logout`))"
+      priority: 110
+      entryPoints: ["web"]
+      middlewares: ["tenant-bagherlocal"]
+      service: "gateway-service"
+
+    gateway-admin:
+      rule: "(Host(`admin.bagherlocal.ir`) || Host(`admin.asanlocal.ir`) || Host(`admin.smslocal.ir`)) && (PathPrefix(`/api`) || PathPrefix(`/oauth2`) || PathPrefix(`/login/oauth2`) || PathPrefix(`/logout`))"
+      priority: 110
+      entryPoints: ["web"]
+      service: "gateway-service"
+
+    # --- UI Panel (replacing Dashboard with Milky-Way Panel) ---
+    panel-smslocal:
+      rule: "Host(`smslocal.ir`)"
+      priority: 90
+      entryPoints: ["web"]
+      middlewares: ["tenant-smslocal"]
+      service: "panel-service"
+
+    panel-asanlocal:
+      rule: "Host(`asanlocal.ir`)"
+      priority: 90
+      entryPoints: ["web"]
+      middlewares: ["tenant-asanlocal"]
+      service: "panel-service"
+
+    panel-bagherlocal:
+      rule: "Host(`bagherlocal.ir`)"
+      priority: 90
+      entryPoints: ["web"]
+      middlewares: ["tenant-bagherlocal"]
+      service: "panel-service"
+
+    panel-admin:
+      rule: "Host(`admin.bagherlocal.ir`) || Host(`admin.asanlocal.ir`) || Host(`admin.smslocal.ir`)"
+      priority: 95
+      entryPoints: ["web"]
+      service: "iam-admin-service"
+
+    # Fallback for localhost testing
+    auth-api-default:
+      rule: "PathPrefix(`/api/auth`) || PathPrefix(`/api/sessions`)"
+      priority: 55
+      entryPoints: ["web"]
+      middlewares: ["add-auth-prefix"]
+      service: "auth-service"
+
+    auth-default:
+      rule: "PathPrefix(`/auth`)"
+      priority: 50
+      entryPoints: ["web"]
+      service: "auth-service"
+
+    gateway-default:
+      rule: "PathPrefix(`/api`) || PathPrefix(`/oauth2`) || PathPrefix(`/login/oauth2`) || PathPrefix(`/logout`)"
+      priority: 45
+      entryPoints: ["web"]
+      service: "gateway-service"
+
+    panel-default:
+      rule: "PathPrefix(`/`)"
+      priority: 10
+      entryPoints: ["web"]
+      service: "panel-service"
+
+  services:
+    auth-service:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:9005"
+
+    gateway-service:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:8080"
+
+    panel-service:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:5173"
+
+    iam-admin-service:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:5174"

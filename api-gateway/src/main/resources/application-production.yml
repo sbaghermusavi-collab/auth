@@ -1,0 +1,88 @@
+#server:
+#  port: 4200
+#  reactive:
+#    session:
+#      timeout: 5h
+#spring:
+#  application:
+#    name: api-gateway
+##  datasource:
+##    url: jdbc:mysql://192.168.100.123:3309/MILKY_WAY_USER_SERVICE?useUnicode=yes&characterEncoding=UTF-8&autoReconnect=true
+##    username: root
+##    password: rootpassword
+#  jpa:
+#    hibernate:
+#      ddl-auto: none
+#  security:
+#    oauth2:
+#      client:
+#        registration:
+#          keycloak:
+#            client-id: asanak
+#            client-secret: FoHnEjcMn0ivnr0CV384qicgcEIPuTB4
+#            authorization-grant-type: authorization_code
+#            scope: openid, profile, email
+#            redirect-uri: http://localhost/login/oauth2/code/keycloak
+#        provider:
+#          keycloak:
+#            user-name-attribute: preferred_username
+#            authorization-uri: http://localhost/auth/realms/milky-way/protocol/openid-connect/auth
+#            token-uri: http://localhost/auth/realms/milky-way/protocol/openid-connect/token
+#            user-info-uri: http://localhost/auth/realms/milky-way/protocol/openid-connect/userinfo
+#            jwk-set-uri: http://localhost/auth/realms/milky-way/protocol/openid-connect/certs
+#  cloud:
+#    gateway:
+#      default-filters:
+#        - TokenRelay
+#      routes:
+#
+#        - id: ticket
+#          uri: http://192.168.100.123:8088
+#          predicates:
+#            - Path=/api/ticketing-service/
+#          filters:
+#            - RewritePath=/api/ticketing-service/(?<segment>.*), /${segment}
+#
+#        - id: userservie
+#          uri: http://192.168.100.123:8089
+#          predicates:
+#            - Path=/api/user-service/
+#          filters:
+#            - RewritePath=/api/user-service/(?<segment>.*), /${segment}
+#
+#        - id: smsbox
+#          uri: http://192.168.100.123:8087
+#          predicates:
+#            - Path=/sms-box/**
+#          filters:
+#            - RewritePath=/api/sms-box/(?<segment>.*), /${segment}
+#
+#        - id: number
+#          uri: http://localhost:9093
+#          predicates:
+#            - Path=/api/number/**
+#          filters:
+#            - RewritePath=/api/number/(?<segment>.*), /${segment}
+#
+#        - id: phonebook
+#          uri: http://localhost:9094
+#          predicates:
+#            - Path=/api/phonebook/**
+#          filters:
+#            - RewritePath=/api/phonebook/(?<segment>.*), /${segment}
+#            -
+#        - id: notification
+#          uri: http://localhost:8095
+#          predicates:
+#            - Path=/api/notification/**
+#          filters:
+#            - RewritePath=/api/notification/(?<segment>.*), /${segment}
+#        - id: payment
+#          uri: http://localhost:8091
+#          predicates:
+#            - Path=/api/payment-service/**
+#          filters:
+#            - RewritePath=/api/payment-service/(?<segment>.*), /${segment}
+#            -
+#  config:
+#    import: optional:configserver:http://192.168.100.198:20000

@@ -1,0 +1,79 @@
+server:
+  port: 4200
+  reactive:
+    session:
+      timeout: 5h
+spring:
+  application:
+    name: api-gateway
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            client-id: asanak
+            client-secret: FoHnEjcMn0ivnr0CV384qicgcEIPuTB4
+            authorization-grant-type: authorization_code
+            scope: openid, profile, email
+            redirect-uri: http://localhost/login/oauth2/code/keycloak
+        provider:
+          keycloak:
+            user-name-attribute: preferred_username
+            authorization-uri: http://localhost/auth/realms/milky-way/protocol/openid-connect/auth
+            token-uri: http://localhost/auth/realms/milky-way/protocol/openid-connect/token
+            user-info-uri: http://localhost/auth/realms/milky-way/protocol/openid-connect/userinfo
+            jwk-set-uri: http://localhost/auth/realms/milky-way/protocol/openid-connect/certs
+  cloud:
+    gateway:
+      routes:
+
+        - id: captcha-route
+          uri: http://localhost:8089
+          predicates:
+            - Path=/api/user-service/captcha/**
+          filters:
+            - RewritePath=/api/user-service/(?<segment>.*), /${segment}
+
+        - id: ticket
+          uri: http://localhost:8088
+          predicates:
+            - Path=/api/ticketing-service/
+          filters:
+            - TokenRelay
+            - RewritePath=/api/ticketing-service/(?<segment>.*), /${segment}
+
+        - id: userservie
+          uri: http://localhost:8089
+          predicates:
+            - Path=/api/user-service/**
+          filters:
+            - TokenRelay
+            - RewritePath=/api/user-service/(?<segment>.*), /${segment}
+
+        - id: smsbox
+          uri: http://localhost:8087
+          predicates:
+            - Path=/sms-box/**
+          filters:
+            - TokenRelay
+            - RewritePath=/api/sms-box/(?<segment>.*), /${segment}
+
+        - id: number
+          uri: http://localhost:9093
+          predicates:
+            - Path=/api/number/**
+          filters:
+            - TokenRelay
+            - RewritePath=/api/number/(?<segment>.*), /${segment}
+  config:
+    import: optional:configserver:http://192.168.100.198:20000
+
+security:
+  public-paths:
+    - /actuator/health
+    - /public/**
+    - /login/oauth2/**
+    - /oauth2/**
+    - /api/user-service/captcha/**
+    - /api/v1/permission/logout
+    - /logout
